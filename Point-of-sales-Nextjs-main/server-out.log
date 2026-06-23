@@ -1,0 +1,188 @@
+
+> vernex-billing-software@0.1.0 dev
+> node --use-system-ca ./node_modules/next/dist/bin/next dev
+
+  ▲ Next.js 14.2.3
+  - Local:        http://localhost:3000
+  - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 4.5s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 1079ms (118 modules)
+ ○ Compiling /login ...
+ ✓ Compiled /login in 9.2s (693 modules)
+ HEAD /login 200 in 9909ms
+ ✓ Compiled in 1344ms (309 modules)
+ ○ Compiling /api/shopdata ...
+ ✓ Compiled /api/shopdata in 1098ms (452 modules)
+ GET /api/shopdata 200 in 2899ms
+ POST /api/shopdata 200 in 1067ms
+ ✓ Compiled /api/customers in 238ms (455 modules)
+ POST /api/customers 201 in 814ms
+ GET /api/customers?q=90000 200 in 510ms
+ ✓ Compiled /api/transactions in 301ms (474 modules)
+ POST /api/transactions 201 in 755ms
+ ✓ Compiled /api/onsale in 262ms (477 modules)
+ POST /api/onsale 201 in 1182ms
+ ✓ Compiled /api/transactions/[id] in 299ms (479 modules)
+ PATCH /api/transactions/TRS-65F52996 200 in 3370ms
+ PATCH /api/transactions/TRS-65F52996 409 in 642ms
+ GET /api/transactions/TRS-65F52996 200 in 607ms
+ ✓ Compiled /api/inventory-ledger in 247ms (481 modules)
+ GET /api/inventory-ledger?productId=PEN-001 200 in 695ms
+ ✓ Compiled /api/restock in 262ms (483 modules)
+ POST /api/restock 200 in 1022ms
+ ✓ Compiled /api/returns in 274ms (485 modules)
+ POST /api/returns 201 in 1590ms
+ GET /api/transactions/TRS-65F52996 200 in 607ms
+ GET /api/inventory-ledger?productId=PEN-001 200 in 357ms
+ POST /api/inventory-ledger 200 in 620ms
+ GET /api/inventory-ledger?productId=PEN-001 200 in 353ms
+ POST /api/transactions 201 in 397ms
+ POST /api/onsale 201 in 639ms
+ PATCH /api/transactions/TRS-AC552B33 200 in 1678ms
+ POST /api/transactions 201 in 377ms
+ POST /api/onsale 409 in 393ms
+ DELETE /api/transactions/TRS-66B96B8C 200 in 522ms
+ ✓ Compiled /api/customers/[id] in 283ms (487 modules)
+ DELETE /api/customers/cmqqafli6000bzmnh1mebw2d8 200 in 2145ms
+ POST /api/shopdata 200 in 744ms
+ ✓ Compiled /api/dashboard in 251ms (489 modules)
+ GET /api/dashboard 200 in 1572ms
+ ✓ Compiled /api/auth/context in 327ms (491 modules)
+ GET /api/auth/context 200 in 1133ms
+ ✓ Compiled /api/staff in 341ms (493 modules)
+ GET /api/staff 200 in 909ms
+ GET /api/staff 403 in 407ms
+ ✓ Compiled /api/audit-logs in 343ms (495 modules)
+ GET /api/audit-logs 403 in 792ms
+ ✓ Compiled /api/profit in 318ms (497 modules)
+ GET /api/profit?start=2026-01-01&end=2026-01-02 403 in 784ms
+ POST /api/inventory-ledger 403 in 414ms
+ POST /api/restock 200 in 970ms
+ GET /api/shopdata 200 in 587ms
+ POST /api/shopdata 403 in 672ms
+ POST /api/shopdata 200 in 1065ms
+ POST /api/customers 201 in 568ms
+ POST /api/transactions 201 in 510ms
+ POST /api/onsale 201 in 744ms
+ PATCH /api/transactions/TRS-7ABFA81B 200 in 2019ms
+ GET /api/transactions/TRS-7ABFA81B 200 in 815ms
+ POST /api/returns 403 in 410ms
+ POST /api/returns 201 in 1636ms
+ GET /api/audit-logs 200 in 511ms
+ DELETE /api/customers/cmqqagnq6004azmnhcsksrzy6 200 in 805ms
+ POST /api/shopdata 200 in 1027ms
+ ○ Compiling /home ...
+ ✓ Compiled /home in 5.9s (1865 modules)
+ GET /home 200 in 6501ms
+ ○ Compiling /orders ...
+ ✓ Compiled /orders in 1510ms (1967 modules)
+ GET /orders 200 in 1964ms
+ ○ Compiling /product ...
+ ✓ Compiled /product in 2.2s (2150 modules)
+ GET /product 200 in 3791ms
+ ○ Compiling /records ...
+ ✓ Compiled /records in 958ms (2148 modules)
+ GET /records 200 in 1644ms
+ ○ Compiling /analytics ...
+ ✓ Compiled /analytics in 909ms (2161 modules)
+ GET /analytics 200 in 1300ms
+ ○ Compiling /settings ...
+ ✓ Compiled /settings in 998ms (2180 modules)
+ GET /settings 200 in 1316ms
+ ○ Compiling /customers ...
+ ✓ Compiled /customers in 854ms (2187 modules)
+ GET /customers 200 in 1006ms
+ ○ Compiling /inventory ...
+ ✓ Compiled /inventory in 864ms (2194 modules)
+ GET /inventory 200 in 1111ms
+ ○ Compiling /staff ...
+ ✓ Compiled /staff in 839ms (2201 modules)
+ GET /staff 200 in 1003ms
+ ○ Compiling /audit-logs ...
+ ✓ Compiled /audit-logs in 941ms (2208 modules)
+ GET /audit-logs 200 in 1084ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 808ms (1332 modules)
+ GET /login 200 in 1091ms
+ GET /home 200 in 359ms
+ ○ Compiling /orders ...
+ GET /api/auth/context 200 in 1177ms
+ ✓ Compiled /orders in 1277ms (1021 modules)
+ GET /api/shopdata 200 in 1537ms
+ GET /api/dashboard 200 in 1730ms
+ ✓ Compiled in 1ms (1073 modules)
+ ✓ Compiled in 1ms (1073 modules)
+ ✓ Compiled in 1ms (1073 modules)
+ GET /favicon.ico 200 in 3611ms
+ GET /api/auth/context 200 in 3470ms
+ GET /api/shopdata 200 in 3497ms
+ GET /api/auth/context 200 in 518ms
+ GET /api/dashboard 200 in 3537ms
+ GET /api/auth/context 200 in 562ms
+ ✓ Compiled /api/transactions/[id] in 452ms (1076 modules)
+ GET /api/shopdata 200 in 619ms
+ ✓ Compiled /audit-logs in 1ms (1076 modules)
+ ✓ Compiled in 1ms (1081 modules)
+ ✓ Compiled in 0ms (1081 modules)
+ ✓ Compiled in 0ms (1081 modules)
+ GET /api/auth/context 200 in 2429ms
+ GET /api/transactions/TRS-3b7d4f6d 200 in 2884ms
+ ✓ Compiled in 0ms (1081 modules)
+ GET /api/shopdata 200 in 2578ms
+ ✓ Compiled in 1ms (1081 modules)
+ ✓ Compiled in 1ms (1081 modules)
+ ✓ Compiled in 1ms (1081 modules)
+ GET /api/auth/context 200 in 2146ms
+ ✓ Compiled /api/audit-logs in 417ms (1083 modules)
+ GET /api/audit-logs 200 in 999ms
+ GET /api/audit-logs 200 in 470ms
+ ✓ Compiled /inventory in 411ms (1088 modules)
+ ✓ Compiled /staff in 503ms (1093 modules)
+ ✓ Compiled /api/staff in 522ms (1095 modules)
+ GET /api/staff 200 in 1142ms
+ GET /api/staff 200 in 543ms
+ ○ Compiling /analytics ...
+ ✓ Compiled /analytics in 533ms (1111 modules)
+ ○ Compiling /records ...
+ ✓ Compiled /records in 598ms (1130 modules)
+ ○ Compiling /product ...
+ ✓ Compiled /product in 944ms (1264 modules)
+   Reload env: .env
+   Reload env: .env
+ ✓ Compiled in 11.7s (2196 modules)
+   Reload env: .env
+ ✓ Compiled in 1137ms (2156 modules)
+   Reload env: .env
+ ✓ Compiled in 11.7s (2170 modules)
+   Reload env: .env
+ ✓ Compiled in 576ms (2156 modules)
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1363ms (2041 modules)
+ GET /product 404 in 1667ms
+ GET /_next/static/css/app/layout.css?v=1782199376340 404 in 188ms
+ GET /_next/static/chunks/app/layout.js 404 in 189ms
+ GET /_next/static/chunks/main-app.js?v=1782199376340 404 in 195ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 201ms
+ GET /_next/static/chunks/app/error.js 404 in 193ms
+ ○ Compiling /icon.png ...
+ ✓ Compiled /icon.png in 902ms (1147 modules)
+ GET /icon.png 200 in 1119ms
+ ✓ Compiled /favicon.ico in 511ms (1149 modules)
+ GET /favicon.ico 200 in 648ms
+ GET /product 200 in 1160ms
+ GET /_next/static/css/app/layout.css?v=1782199408651 404 in 191ms
+ GET /_next/static/css/app/(root)/product/page.css?v=1782199408651 404 in 195ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 285ms
+ GET /_next/static/chunks/main-app.js?v=1782199408651 404 in 289ms
+ GET /_next/static/chunks/app/(root)/layout.js 404 in 317ms
+ GET /_next/static/chunks/app/(root)/product/page.js 404 in 307ms
+ GET /_next/static/chunks/app/layout.js 404 in 103ms
+ GET /_next/static/chunks/app/error.js 404 in 99ms
+ GET /favicon.ico 200 in 39ms
+ GET /product 200 in 582ms
+ GET /_next/static/css/app/layout.css?v=1782199470599 404 in 32ms
+ HEAD /_next/static/css/app/layout.css?v=1782199470599 404 in 31ms
+ GET /_next/static/css/app/layout.css?v=1782199470599 404 in 28ms
