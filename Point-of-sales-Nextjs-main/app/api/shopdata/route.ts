@@ -32,9 +32,14 @@ const settingsSchema = z
   })
   .refine((value) => Object.values(value).some((item) => item !== undefined), 'No settings supplied.');
 
+const shopCache = new Map<string, { expires: number; data: unknown }>();
+const SHOP_CACHE_MS = 30_000;
+
 export async function GET(request: Request) {
   try {
     const ctx = await requireAuth(request);
+    const cached = shopCache.get(ctx.businessId);
+    if (cached && cached.expires > Date.now()) return NextResponse.json(cached.data);
     const [stored, sequence] = await Promise.all([db.shopData.findFirst({ where: { businessId: ctx.businessId } }), db.billSequence.findUnique({ where: { id: 'main' } })]);
     const data = stored ?? {
       id: null,
@@ -50,7 +55,9 @@ export async function GET(request: Request) {
       billPrefix: 'VNX', billPadding: 6, showBusinessLogo: true, showTaxId: true,
       showCustomerDetails: true, showItemTax: true, showFooter: true, receiptSize: '80mm',
     };
-    return NextResponse.json({ data: { ...data, billNextNumber: sequence?.nextNumber ?? 1 } });
+    const response = { data: { ...data, billNextNumber: sequence?.nextNumber ?? 1 } };
+    shopCache.set(ctx.businessId, { expires: Date.now() + SHOP_CACHE_MS, data: response });
+    return NextResponse.json(response);
   } catch (error) {
     const response = authErrorResponse(error);
     if (response) return response;
@@ -118,6 +125,7 @@ export async function POST(request: Request) {
   if (billNextNumber !== undefined) {
     await db.billSequence.upsert({ where: { id: 'main' }, create: { id: 'main', businessId: ctx.businessId, nextNumber: billNextNumber }, update: { nextNumber: billNextNumber, businessId: ctx.businessId } });
   }
+  shopCache.delete(ctx.businessId);
 
   await writeAuditLog(ctx, { action: 'SETTINGS_UPDATED', entityType: 'ShopData', entityId: saved.id, description: 'Updated business/settings data', metadata: Object.keys(values) });
   if (values.billPrefix !== undefined || values.billPadding !== undefined || billNextNumber !== undefined) {

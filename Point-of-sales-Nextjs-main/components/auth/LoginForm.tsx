@@ -11,7 +11,7 @@ export function LoginForm() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   const login = async () => {
     if (!supabaseUrl || !supabaseAnon) {
@@ -55,4 +55,3 @@ export function LoginForm() {
     </div>
   );
 }
-

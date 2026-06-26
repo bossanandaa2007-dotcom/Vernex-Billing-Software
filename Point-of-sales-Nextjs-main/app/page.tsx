@@ -27,8 +27,8 @@ export default function Home() {
     <main>
       <div className="relative flex h-screen w-full items-center justify-center bg-vernex-surface dark:bg-vernex-dark">
         {/* Radial gradient for the container to give a faded look */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(201,151,43,0.16),transparent_35%)]"></div>
-        <div className="flex flex-col items-center justify-center h-[40rem] ">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(201,151,43,0.16),transparent_35%)]"></div>
+        <div className="relative z-10 flex flex-col items-center justify-center h-[40rem] ">
           <p className="text-neutral-800 dark:text-neutral-200 text-xl  mb-10">
             Welcome to Vernex Billing Software
           </p>

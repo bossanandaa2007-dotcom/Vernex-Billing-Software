@@ -8,6 +8,8 @@ import { hasPermission, isRoleAllowed, Permission } from '@/lib/permissions';
 const DEFAULT_BUSINESS_ID = 'vernex-demo-business';
 const DEMO_AUTH_USER_ID = 'demo-owner-auth-user';
 const DEMO_EMAIL = 'owner@vernex.local';
+let defaultBusinessReady: Promise<unknown> | null = null;
+const testStaffReady = new Map<string, Promise<unknown>>();
 
 export class AuthError extends Error {
   status: number;
@@ -28,15 +30,17 @@ export type CurrentUserContext = {
 
 function supabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !anon) return null;
   return createClient(url, anon, { auth: { persistSession: false } });
 }
 
 export async function ensureDefaultBusiness() {
+  if (defaultBusinessReady) return defaultBusinessReady;
   const trialStartedAt = new Date();
   const trialEndsAt = new Date(trialStartedAt);
   trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+  defaultBusinessReady = (async () => {
   const business = await db.business.upsert({
     where: { id: DEFAULT_BUSINESS_ID },
     update: {},
@@ -68,6 +72,8 @@ export async function ensureDefaultBusiness() {
   });
 
   return business;
+  })();
+  return defaultBusinessReady;
 }
 
 async function userFromBearer(request?: Request) {
@@ -87,7 +93,9 @@ export async function getCurrentUserContext(request?: Request): Promise<CurrentU
   const testBusinessId = request?.headers.get('x-vernex-test-business') || DEFAULT_BUSINESS_ID;
   if (process.env.NODE_ENV !== 'production' && testRole && ['OWNER', 'MANAGER', 'CASHIER'].includes(testRole)) {
     await ensureDefaultBusiness();
-    const staff = await db.staffProfile.upsert({
+    const key = `${testBusinessId}:${testRole}`;
+    if (!testStaffReady.has(key)) {
+      testStaffReady.set(key, db.staffProfile.upsert({
       where: { authUserId: `phase6-${testRole.toLowerCase()}` },
       update: { role: testRole, status: 'ACTIVE', businessId: testBusinessId },
       create: {
@@ -98,7 +106,9 @@ export async function getCurrentUserContext(request?: Request): Promise<CurrentU
         role: testRole,
         status: 'ACTIVE',
       },
-    });
+      }));
+    }
+    const staff = await testStaffReady.get(key) as Awaited<ReturnType<typeof db.staffProfile.upsert>>;
     return { authUserId: staff.authUserId, staffId: staff.id, businessId: staff.businessId, name: staff.name, email: staff.email, role: staff.role };
   }
 
