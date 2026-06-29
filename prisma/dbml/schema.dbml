@@ -1,0 +1,332 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table User {
+  id String [pk]
+  name String [not null]
+  username String [not null]
+  email String [unique]
+  emailVerified DateTime
+  image String
+  password String
+  role UserRole [not null, default: 'UNKNOW']
+}
+
+Table ProductStock {
+  id String [pk]
+  businessId String
+  name String [not null]
+  imageProduct String
+  price Float [not null]
+  stock Float [not null]
+  cat CatProduct [not null]
+  business Business
+  Product Product [not null]
+  movements InventoryMovement [not null]
+}
+
+Table Product {
+  id String [pk]
+  productId String [unique, not null]
+  productstock ProductStock [not null]
+  sellprice Float [not null]
+  OnSaleProduct OnSaleProduct [not null]
+}
+
+Table OnSaleProduct {
+  id String [pk]
+  productId String
+  quantity Int [not null]
+  saledate DateTime [default: `now()`, not null]
+  transactionId String [not null]
+  productName String [not null, default: '']
+  unitPrice Float [not null, default: 0]
+  costPrice Float [not null, default: 0]
+  taxRate Float [not null, default: 0]
+  lineSubtotal Float [not null, default: 0]
+  taxAmount Float [not null, default: 0]
+  lineTotal Float [not null, default: 0]
+  product Product
+  transaction Transaction [not null]
+  returnItems ReturnItem [not null]
+}
+
+Table Transaction {
+  id String [pk]
+  businessId String
+  billNumber String [unique]
+  customerName String
+  customerPhone String
+  customerEmail String
+  customerAddress String
+  customerTaxId String
+  customerId String
+  subtotal Decimal [not null, default: 0]
+  discount Decimal [not null, default: 0]
+  taxAmount Decimal [not null, default: 0]
+  totalAmount Decimal [default: 0]
+  amountReceived Decimal [not null, default: 0]
+  changeAmount Decimal [not null, default: 0]
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus [not null, default: 'PENDING']
+  createdAt DateTime [default: `now()`, not null]
+  completedAt DateTime
+  isComplete Boolean [not null, default: false]
+  products OnSaleProduct [not null]
+  business Business
+  customer Customer
+  returns SaleReturn [not null]
+  returnStatus ReturnStatus
+  refundedAmount Decimal [not null, default: 0]
+}
+
+Table Customer {
+  id String [pk]
+  businessId String
+  name String [not null]
+  phone String [not null]
+  email String
+  address String
+  taxId String
+  country String
+  notes String
+  isActive Boolean [not null, default: true]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  business Business
+  transactions Transaction [not null]
+}
+
+Table InventoryMovement {
+  id String [pk]
+  businessId String
+  productId String
+  productNameSnapshot String [not null]
+  movementType InventoryMovementType [not null]
+  quantityChange Float [not null]
+  previousStock Float [not null]
+  newStock Float [not null]
+  referenceType String
+  referenceId String
+  referenceBillNumber String
+  reason String
+  createdAt DateTime [default: `now()`, not null]
+  business Business
+  product ProductStock
+}
+
+Table SaleReturn {
+  id String [pk]
+  businessId String
+  originalTransactionId String [not null]
+  originalBillNumber String [not null]
+  refundAmount Decimal [not null]
+  refundMethod PaymentMethod [not null]
+  reason String [not null]
+  status ReturnStatus [not null]
+  createdAt DateTime [default: `now()`, not null]
+  business Business
+  transaction Transaction [not null]
+  items ReturnItem [not null]
+}
+
+Table ReturnItem {
+  id String [pk]
+  saleReturnId String [not null]
+  onSaleProductId String [not null]
+  productId String
+  productName String [not null]
+  quantity Int [not null]
+  unitRefund Decimal [not null]
+  refundAmount Decimal [not null]
+  saleReturn SaleReturn [not null]
+  saleLine OnSaleProduct [not null]
+}
+
+Table ShopData {
+  id String [pk]
+  businessId String
+  tax Float [default: 0]
+  name String [default: 'Vernex Demo Shop']
+  country String [not null, default: 'India']
+  currency String [not null, default: 'INR']
+  taxMode TaxMode [not null, default: 'GST']
+  phone String
+  address String
+  taxId String
+  receiptFooter String [default: 'Thank you for your business!']
+  billPrefix String [not null, default: 'VNX']
+  billPadding Int [not null, default: 6]
+  showBusinessLogo Boolean [not null, default: true]
+  showTaxId Boolean [not null, default: true]
+  showCustomerDetails Boolean [not null, default: true]
+  showItemTax Boolean [not null, default: true]
+  showFooter Boolean [not null, default: true]
+  receiptSize String [not null, default: '80mm']
+  business Business
+}
+
+Table BillSequence {
+  id String [pk, default: 'main']
+  businessId String
+  nextNumber Int [not null, default: 1]
+  business Business
+}
+
+Table Business {
+  id String [pk]
+  name String [not null]
+  country String [not null, default: 'India']
+  currency String [not null, default: 'INR']
+  taxMode TaxMode [not null, default: 'GST']
+  ownerUserId String [not null]
+  trialStartedAt DateTime [default: `now()`, not null]
+  trialEndsAt DateTime
+  subscriptionStatus SubscriptionStatus [not null, default: 'TRIAL']
+  planName String [not null, default: 'Free Trial']
+  activatedAt DateTime
+  suspendedAt DateTime
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  products ProductStock [not null]
+  customers Customer [not null]
+  transactions Transaction [not null]
+  returns SaleReturn [not null]
+  inventoryMovements InventoryMovement [not null]
+  shopData ShopData [not null]
+  billSequences BillSequence [not null]
+  staff StaffProfile [not null]
+  auditLogs AuditLog [not null]
+}
+
+Table StaffProfile {
+  id String [pk]
+  authUserId String [unique, not null]
+  businessId String [not null]
+  name String [not null]
+  email String [unique, not null]
+  phone String
+  role UserRole [not null, default: 'CASHIER']
+  status StaffStatus [not null, default: 'ACTIVE']
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  lastLoginAt DateTime
+  business Business [not null]
+  auditLogs AuditLog [not null]
+}
+
+Table AuditLog {
+  id String [pk]
+  businessId String [not null]
+  userId String
+  userNameSnapshot String [not null]
+  roleSnapshot UserRole [not null]
+  action String [not null]
+  entityType String [not null]
+  entityId String
+  referenceNumber String
+  description String [not null]
+  metadata Json
+  createdAt DateTime [default: `now()`, not null]
+  business Business [not null]
+  staff StaffProfile
+}
+
+Enum UserRole {
+  OWNER
+  MANAGER
+  CASHIER
+  WORKER
+  UNKNOW
+}
+
+Enum StaffStatus {
+  ACTIVE
+  INACTIVE
+}
+
+Enum CatProduct {
+  ELECTRO
+  DRINK
+  FOOD
+  FASHION
+  STATIONERY
+}
+
+Enum PaymentMethod {
+  CASH
+  UPI
+  CARD
+  CREDIT
+  ONLINE
+}
+
+Enum PaymentStatus {
+  PAID
+  PENDING
+  PARTIAL
+}
+
+Enum TaxMode {
+  GST
+  VAT
+  SALES_TAX
+  TAX
+  NONE
+}
+
+Enum InventoryMovementType {
+  SALE
+  RESTOCK
+  RETURN
+  ADJUSTMENT
+}
+
+Enum ReturnStatus {
+  PARTIAL
+  RETURNED
+}
+
+Enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+}
+
+Ref: ProductStock.businessId > Business.id [delete: Set Null]
+
+Ref: Product.productId > ProductStock.id [delete: Cascade]
+
+Ref: OnSaleProduct.productId > Product.productId [delete: Set Null]
+
+Ref: OnSaleProduct.transactionId > Transaction.id [delete: Cascade]
+
+Ref: Transaction.businessId > Business.id [delete: Set Null]
+
+Ref: Transaction.customerId > Customer.id [delete: Set Null]
+
+Ref: Customer.businessId > Business.id [delete: Set Null]
+
+Ref: InventoryMovement.businessId > Business.id [delete: Set Null]
+
+Ref: InventoryMovement.productId > ProductStock.id [delete: Set Null]
+
+Ref: SaleReturn.businessId > Business.id [delete: Set Null]
+
+Ref: SaleReturn.originalTransactionId > Transaction.id [delete: Restrict]
+
+Ref: ReturnItem.saleReturnId > SaleReturn.id [delete: Cascade]
+
+Ref: ReturnItem.onSaleProductId > OnSaleProduct.id [delete: Restrict]
+
+Ref: ShopData.businessId > Business.id [delete: Set Null]
+
+Ref: BillSequence.businessId > Business.id [delete: Set Null]
+
+Ref: StaffProfile.businessId > Business.id [delete: Cascade]
+
+Ref: AuditLog.businessId > Business.id [delete: Cascade]
+
+Ref: AuditLog.userId > StaffProfile.id [delete: Set Null]

@@ -1,0 +1,446 @@
+
+> vernex-billing-software@0.1.0 dev
+> node --use-system-ca ./node_modules/next/dist/bin/next dev
+
+  ▲ Next.js 14.2.3
+  - Local:        http://localhost:3000
+  - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 12.3s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 649ms (118 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 13.8s (1220 modules)
+ GET / 200 in 14773ms
+ ✓ Compiled in 1939ms (571 modules)
+ GET / 200 in 283ms
+ GET / 200 in 197ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 2.1s (679 modules)
+ GET /favicon.ico 200 in 2656ms
+ GET /favicon.ico 200 in 47ms
+ GET / 200 in 614ms
+ GET / 200 in 609ms
+ ○ Compiling /home ...
+ ✓ Compiled /home in 8.7s (1759 modules)
+ ○ Compiling /api/shopdata ...
+ ✓ Compiled /api/shopdata in 2.5s (1038 modules)
+ ✓ Compiled (1048 modules)
+ GET /api/auth/context 200 in 6060ms
+ GET /api/dashboard 200 in 6626ms
+ GET /api/subscription 200 in 6683ms
+ GET /api/auth/context 200 in 646ms
+ GET /api/shopdata 200 in 6695ms
+ GET /api/dashboard 200 in 137ms
+ GET /api/shopdata 200 in 147ms
+ GET /api/subscription 200 in 207ms
+ GET /api/auth/context 200 in 185ms
+ GET /api/auth/context 200 in 93ms
+ GET /api/auth/context 200 in 91ms
+ GET /api/auth/context 200 in 88ms
+ ○ Compiling /orders ...
+ ✓ Compiled /orders in 2.5s (1923 modules)
+ ○ Compiling /api/customers ...
+ ✓ Compiled /api/customers in 986ms (1091 modules)
+ GET /api/subscription 200 in 1233ms
+ ✓ Compiled in 1ms (1095 modules)
+ ✓ Compiled in 1ms (1095 modules)
+ GET /api/shopdata 200 in 2646ms
+ ✓ Compiled in 1ms (1095 modules)
+ GET /api/storage 200 in 4282ms
+ GET /api/subscription 200 in 3286ms
+ GET /api/storage 200 in 304ms
+ GET /api/customers 200 in 4604ms
+ GET /api/shopdata 200 in 1927ms
+ GET /api/customers 200 in 440ms
+ ○ Compiling /product ...
+ ✓ Compiled /product in 6.3s (2115 modules)
+ GET /api/subscription 200 in 218ms
+ GET /api/subscription 200 in 128ms
+ GET /api/subscription 200 in 193ms
+ GET /api/storage 200 in 334ms
+ GET /api/shopdata 200 in 338ms
+ GET /api/subscription 200 in 162ms
+ GET /api/customers 200 in 423ms
+ GET /api/shopdata 200 in 131ms
+ GET /api/storage 200 in 246ms
+ GET /api/customers 200 in 331ms
+ GET /api/storage 200 in 262ms
+ GET /api/storage 200 in 270ms
+ GET /api/storage 200 in 242ms
+ ○ Compiling /api/customers ...
+ ✓ Compiled /api/customers in 4.9s (2086 modules)
+ ✓ Compiled in 1ms (1226 modules)
+ ✓ Compiled in 1ms (1226 modules)
+ ✓ Compiled in 0ms (1226 modules)
+ GET /api/storage 200 in 4692ms
+ GET /api/shopdata 200 in 4869ms
+ GET /api/customers 200 in 4887ms
+ GET /orders 200 in 517ms
+ GET /api/storage 200 in 230ms
+ GET /orders 200 in 160ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /api/subscription in 1517ms (1253 modules)
+ ✓ Compiled (1257 modules)
+ GET /favicon.ico 200 in 2403ms
+ GET /api/auth/context 200 in 1952ms
+ GET /api/subscription 200 in 2035ms
+ GET /api/auth/context 200 in 110ms
+ GET /api/storage 200 in 2076ms
+ GET /api/shopdata 200 in 2082ms
+ GET /api/customers 200 in 2115ms
+ GET /api/auth/context 200 in 211ms
+ GET /api/shopdata 200 in 230ms
+ GET /api/subscription 200 in 345ms
+ GET /api/auth/context 200 in 86ms
+ GET /api/customers 200 in 282ms
+ GET /api/shopdata 200 in 86ms
+ GET /api/storage 200 in 329ms
+ GET /api/shopdata 200 in 103ms
+ GET /api/auth/context 200 in 146ms
+ GET /api/subscription 200 in 193ms
+ GET /api/auth/context 200 in 119ms
+ GET /api/subscription 200 in 174ms
+ GET /api/subscription 200 in 207ms
+ GET /api/subscription 200 in 170ms
+ ○ Compiling /records ...
+ ✓ Compiled /records in 3.2s (2128 modules)
+ ✓ Compiled in 2.1s (1223 modules)
+ ✓ Compiled in 3.3s (2102 modules)
+ ✓ Compiled in 5.3s (2110 modules)
+ ✓ Compiled in 1667ms (2110 modules)
+ GET /records 200 in 971ms
+ GET /records 200 in 567ms
+ ○ Compiling /api/shopdata ...
+ ✓ Compiled /api/shopdata in 1835ms (1236 modules)
+ ✓ Compiled (1244 modules)
+ GET /api/auth/context 200 in 4371ms
+ GET /api/shopdata 200 in 4387ms
+ GET /api/subscription 200 in 4426ms
+ GET /api/auth/context 200 in 101ms
+ GET /api/shopdata 200 in 168ms
+ GET /api/auth/context 200 in 153ms
+ GET /api/subscription 200 in 229ms
+ GET /api/auth/context 200 in 87ms
+ GET /api/auth/context 200 in 82ms
+ GET /api/auth/context 200 in 83ms
+ ○ Compiling /analytics ...
+ ✓ Compiled /analytics in 2.9s (2129 modules)
+ ○ Compiling /api/reports/returns ...
+ ✓ Compiled /api/reports/returns in 801ms (1260 modules)
+ ✓ Compiled (1268 modules)
+ GET /api/reports/payments?preset=today 200 in 2560ms
+ GET /api/reports/returns?preset=today 200 in 2684ms
+ GET /api/reports/customers?preset=today 200 in 2772ms
+ GET /api/reports/sales?preset=today 200 in 2864ms
+ GET /api/reports/payments?preset=today 200 in 372ms
+ GET /api/reports/returns?preset=today 200 in 333ms
+ GET /api/reports/products?preset=today 200 in 3092ms
+ GET /api/reports/customers?preset=today 200 in 333ms
+ GET /api/reports/sales?preset=today 200 in 253ms
+ GET /api/reports/products?preset=today 200 in 374ms
+ GET /analytics 200 in 573ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 743ms (1295 modules)
+ GET /favicon.ico 200 in 1620ms
+ GET /api/auth/context 200 in 2103ms
+ GET /api/reports/payments?preset=today 200 in 2186ms
+ GET /api/reports/sales?preset=today 200 in 2225ms
+ GET /api/subscription 200 in 2276ms
+ GET /api/reports/customers?preset=today 200 in 931ms
+ GET /api/reports/products?preset=today 200 in 2375ms
+ GET /api/reports/returns?preset=today 200 in 317ms
+ GET /api/auth/context 200 in 259ms
+ GET /api/shopdata 200 in 315ms
+ GET /api/reports/payments?preset=today 200 in 319ms
+ GET /api/reports/sales?preset=today 200 in 291ms
+ GET /api/auth/context 200 in 101ms
+ GET /api/subscription 200 in 329ms
+ GET /api/reports/customers?preset=today 200 in 286ms
+ GET /api/reports/returns?preset=today 200 in 229ms
+ GET /api/reports/products?preset=today 200 in 351ms
+ GET /api/shopdata 200 in 246ms
+ GET /api/auth/context 200 in 225ms
+ GET /api/auth/context 200 in 92ms
+ GET /api/auth/context 200 in 107ms
+ GET /api/reports/payments?preset=last7 200 in 234ms
+ GET /api/reports/products?preset=last7 200 in 375ms
+ GET /api/reports/sales?preset=last7 200 in 405ms
+ GET /api/reports/returns?preset=last7 200 in 477ms
+ GET /api/reports/customers?preset=last7 200 in 498ms
+ ○ Compiling /inventory ...
+ ✓ Compiled /inventory in 1671ms (2175 modules)
+ GET /api/subscription 200 in 635ms
+ GET /api/subscription 200 in 196ms
+ ○ Compiling /staff ...
+ ✓ Compiled /staff in 1081ms (2119 modules)
+ ○ Compiling /api/staff ...
+ ✓ Compiled /api/staff in 1159ms (1244 modules)
+ GET /api/staff 200 in 1903ms
+ GET /api/staff 200 in 184ms
+ POST /api/staff 400 in 144ms
+ GET /api/auth/context 200 in 245ms
+ GET /api/subscription 200 in 268ms
+ GET /api/shopdata 200 in 305ms
+ GET /api/auth/context 200 in 188ms
+ GET /api/auth/context 200 in 81ms
+ GET /api/subscription 200 in 516ms
+ GET /api/auth/context 200 in 365ms
+ GET /api/subscription 200 in 162ms
+ GET /api/auth/context 200 in 86ms
+ GET /api/shopdata 200 in 702ms
+ GET /api/auth/context 200 in 102ms
+ GET /api/subscription 200 in 153ms
+ GET /api/staff 200 in 345ms
+ GET /api/staff 200 in 192ms
+ POST /api/staff 400 in 883ms
+ GET /api/auth/context 200 in 248ms
+ GET /api/shopdata 200 in 276ms
+ GET /api/shopdata 200 in 107ms
+ GET /api/subscription 200 in 534ms
+ GET /api/subscription 200 in 147ms
+ GET /api/subscription 200 in 137ms
+ GET /api/auth/context 200 in 740ms
+ GET /api/subscription 200 in 178ms
+ GET /api/auth/context 200 in 109ms
+ GET /api/auth/context 200 in 112ms
+ GET /api/auth/context 200 in 134ms
+ GET /api/auth/context 200 in 98ms
+ GET /api/staff 200 in 191ms
+ GET /api/staff 200 in 149ms
+ ✓ Compiled in 3.1s (1897 modules)
+ ✓ Compiled in 2.2s (1897 modules)
+ GET /staff 200 in 575ms
+ ✓ Compiled /api/staff in 469ms (1012 modules)
+ POST /api/staff 400 in 10733ms
+ ✓ Compiled in 3.3s (1903 modules)
+ GET /staff 200 in 576ms
+ GET /staff 200 in 232ms
+ ○ Compiling /api/shopdata ...
+ ✓ Compiled /api/shopdata in 823ms (1010 modules)
+ ✓ Compiled in 3ms (1020 modules)
+ ✓ Compiled in 0ms (1020 modules)
+ ✓ Compiled in 0ms (1020 modules)
+ GET /api/auth/context 200 in 4889ms
+ GET /api/auth/context 200 in 511ms
+ GET /api/staff 200 in 6034ms
+ GET /api/subscription 200 in 6162ms
+ GET /api/shopdata 200 in 6133ms
+ GET /api/staff 200 in 192ms
+ GET /api/auth/context 200 in 457ms
+ GET /api/shopdata 200 in 187ms
+ GET /api/auth/context 200 in 179ms
+ GET /api/subscription 200 in 371ms
+ GET /api/auth/context 200 in 294ms
+ GET /api/auth/context 200 in 141ms
+ POST /api/staff 400 in 89ms
+ ○ Compiling /api/staff ...
+ ✓ Compiled /api/staff in 7.2s (1915 modules)
+ GET /api/staff 200 in 4455ms
+ GET /api/staff 200 in 187ms
+ GET /api/staff 200 in 218ms
+ GET /api/staff 200 in 176ms
+ GET /staff 200 in 602ms
+ ○ Compiling /api/staff/[id] ...
+ ✓ Compiled /api/staff/[id] in 1626ms (1021 modules)
+ PATCH /api/staff/cmqq9vl0n0005oprbcmm1rz3d 200 in 4390ms
+ GET /api/staff 200 in 217ms
+ PATCH /api/staff/cmqq9vl0n0005oprbcmm1rz3d 200 in 338ms
+ GET /api/staff 200 in 183ms
+ PATCH /api/staff/cmqq9vl0n0005oprbcmm1rz3d 200 in 277ms
+ GET /api/staff 200 in 252ms
+ ○ Compiling /audit-logs ...
+ ✓ Compiled /audit-logs in 1637ms (1910 modules)
+ ○ Compiling /api/audit-logs ...
+ ✓ Compiled /api/audit-logs in 614ms (1028 modules)
+ GET /api/audit-logs 200 in 1397ms
+ GET /api/audit-logs 200 in 233ms
+ ○ Compiling /settings ...
+ ✓ Compiled /settings in 2.3s (1901 modules)
+ ○ Compiling /api/shopdata ...
+ ✓ Compiled /api/shopdata in 581ms (1013 modules)
+ GET /api/shopdata 200 in 1216ms
+ GET /api/shopdata 200 in 169ms
+ GET /api/audit-logs 200 in 334ms
+ GET /api/audit-logs 200 in 181ms
+ GET /api/staff 200 in 154ms
+ GET /api/staff 200 in 160ms
+ ○ Compiling /home ...
+ ✓ Compiled /home in 2.2s (982 modules)
+ ○ Compiling /api/dashboard ...
+ ✓ Compiled /api/dashboard in 577ms (1058 modules)
+ GET /api/dashboard 200 in 1990ms
+ GET /api/dashboard 200 in 186ms
+ ○ Compiling /api/dashboard ...
+ ✓ Compiled /api/dashboard in 7.9s (1859 modules)
+ GET /api/auth/context 200 in 5410ms
+ GET /api/auth/context 200 in 243ms
+ GET /api/dashboard 200 in 5706ms
+ GET /api/dashboard 200 in 137ms
+ GET /home 200 in 712ms
+ ✓ Compiled in 2.8s (1779 modules)
+ GET /home 200 in 615ms
+ GET /home 200 in 319ms
+ ✓ Compiled /api/shopdata in 485ms (1003 modules)
+ ✓ Compiled (1013 modules)
+ GET /api/auth/context 200 in 3314ms
+ GET /api/dashboard 200 in 3608ms
+ GET /api/subscription 200 in 3695ms
+ GET /api/shopdata 200 in 3659ms
+ GET /api/auth/context 200 in 369ms
+ GET /api/dashboard 200 in 208ms
+ GET /api/auth/context 200 in 204ms
+ GET /api/shopdata 200 in 213ms
+ GET /api/auth/context 200 in 138ms
+ GET /api/subscription 200 in 426ms
+ GET /api/auth/context 200 in 148ms
+ GET /api/auth/context 200 in 114ms
+ ○ Compiling /orders ...
+ ✓ Compiled /orders in 1455ms (1040 modules)
+ ○ Compiling /api/customers ...
+ ✓ Compiled /api/customers in 754ms (1042 modules)
+ GET /api/subscription 200 in 1141ms
+ ✓ Compiled in 0ms (1046 modules)
+ ✓ Compiled in 0ms (1046 modules)
+ GET /api/shopdata 200 in 2425ms
+ ✓ Compiled in 1ms (1046 modules)
+ ✓ Compiled in 1ms (1046 modules)
+ GET /api/storage 200 in 4004ms
+ ✓ Compiled in 1ms (1046 modules)
+ GET /api/subscription 200 in 3561ms
+ GET /api/customers 200 in 4835ms
+ ✓ Compiled in 1ms (1046 modules)
+ GET /api/shopdata 200 in 3629ms
+ GET /api/customers 200 in 1590ms
+ GET /api/storage 200 in 2089ms
+ GET /api/dashboard 200 in 738ms
+ GET /api/dashboard 200 in 107ms
+ ○ Compiling /product ...
+ ✓ Compiled /product in 2.8s (1207 modules)
+ GET /api/subscription 200 in 196ms
+ GET /api/subscription 200 in 176ms
+ GET /api/dashboard 200 in 422ms
+ GET /api/dashboard 200 in 158ms
+ ○ Compiling /records ...
+ ✓ Compiled /records in 842ms (1225 modules)
+ ○ Compiling /analytics ...
+ ✓ Compiled /analytics in 1570ms (1236 modules)
+ ○ Compiling /api/reports/returns ...
+ ✓ Compiled /api/reports/returns in 791ms (1224 modules)
+ ✓ Compiled (1232 modules)
+ GET /api/reports/payments?preset=today 200 in 2692ms
+ GET /api/reports/returns?preset=today 200 in 2813ms
+ GET /api/reports/sales?preset=today 200 in 2881ms
+ GET /api/reports/products?preset=today 200 in 2940ms
+ GET /api/reports/customers?preset=today 200 in 2945ms
+ GET /api/reports/payments?preset=today 200 in 287ms
+ GET /api/reports/returns?preset=today 200 in 397ms
+ GET /api/reports/sales?preset=today 200 in 357ms
+ GET /api/reports/products?preset=today 200 in 359ms
+ GET /api/reports/customers?preset=today 200 in 511ms
+ GET /api/dashboard 200 in 1646ms
+ GET /api/dashboard 200 in 176ms
+ ✓ Compiled in 4.4s (1874 modules)
+ ✓ Compiled in 2.4s (1860 modules)
+ ○ Compiling /api/dashboard ...
+ ✓ Compiled /api/dashboard in 3.7s (1874 modules)
+ ✓ Compiled in 1ms (1024 modules)
+ GET /api/dashboard?period=today 200 in 3589ms
+ GET /api/dashboard?period=today 200 in 167ms
+ GET /api/dashboard?period=today 200 in 174ms
+ GET /api/dashboard?period=today 200 in 132ms
+ GET /home 200 in 965ms
+ GET /api/dashboard?period=today 200 in 567ms
+ GET /api/dashboard?period=week 200 in 766ms
+ GET /api/dashboard?period=month 200 in 413ms
+ GET /api/dashboard?period=month 200 in 441ms
+ ✓ Compiled in 5.2s (1874 modules)
+ ○ Compiling /orders ...
+ ✓ Compiled /orders in 1619ms (1053 modules)
+ ○ Compiling /api/customers ...
+ ✓ Compiled /api/customers in 699ms (1058 modules)
+ ✓ Compiled in 1ms (1069 modules)
+ ✓ Compiled in 0ms (1069 modules)
+ ✓ Compiled in 1ms (1069 modules)
+ GET /api/subscription 200 in 4740ms
+ GET /api/shopdata 200 in 4855ms
+ GET /api/storage 200 in 4890ms
+ GET /api/customers 200 in 4938ms
+ GET /api/subscription 200 in 385ms
+ GET /api/shopdata 200 in 276ms
+ GET /api/storage 200 in 602ms
+ GET /api/customers 200 in 804ms
+ ○ Compiling /product ...
+ ✓ Compiled /product in 1902ms (1198 modules)
+ GET /api/subscription 200 in 339ms
+ GET /api/subscription 200 in 807ms
+ GET /home 200 in 721ms
+ ✓ Compiled in 2.9s (1171 modules)
+ ✓ Compiled in 4.2s (2011 modules)
+ GET /product?category=FOOD 200 in 1186ms
+ GET /product?category=DRINK 200 in 1466ms
+ GET /product?category=FOOD 200 in 783ms
+ ✓ Compiled in 2.5s (2025 modules)
+ GET /product 200 in 1000ms
+ GET /product?category=STATIONERY 200 in 751ms
+ ○ Compiling /api/dashboard ...
+ ✓ Compiled /api/dashboard in 6.8s (1175 modules)
+ GET /api/dashboard?period=today 200 in 9877ms
+ GET /api/dashboard?period=today 200 in 194ms
+ ○ Compiling /settings ...
+ ✓ Compiled /settings in 3.3s (1186 modules)
+ ○ Compiling /api/shopdata ...
+ ✓ Compiled /api/shopdata in 5s (1192 modules)
+ GET /api/shopdata 200 in 8737ms
+ GET /api/shopdata 200 in 1010ms
+ GET /api/dashboard?period=today 200 in 2743ms
+ GET /api/dashboard?period=today 200 in 255ms
+ GET /api/dashboard?period=week 200 in 750ms
+ GET /api/dashboard?period=month 200 in 473ms
+ GET /api/dashboard?period=today 200 in 853ms
+ ○ Compiling /api/storage ...
+ ✓ Compiled /api/storage in 6.3s (1178 modules)
+ ✓ Compiled (1189 modules)
+ GET /api/subscription 200 in 12421ms
+ GET /api/shopdata 200 in 12388ms
+ GET /api/storage 200 in 12417ms
+ GET /api/customers 200 in 12447ms
+ GET /api/shopdata 200 in 570ms
+ GET /api/subscription 200 in 685ms
+ GET /api/storage 200 in 735ms
+ GET /api/customers 200 in 752ms
+ GET /api/subscription 200 in 433ms
+ GET /api/subscription 200 in 216ms
+ ○ Compiling /records ...
+ ✓ Compiled /records in 5.7s (1209 modules)
+ ○ Compiling /analytics ...
+ ✓ Compiled /analytics in 5.8s (1218 modules)
+ ○ Compiling /api/reports/customers ...
+ ✓ Compiled /api/reports/customers in 2s (1222 modules)
+ ✓ Compiled (1230 modules)
+ GET /api/reports/payments?preset=today 200 in 6037ms
+ GET /api/reports/products?preset=today 200 in 6155ms
+ GET /api/reports/returns?preset=today 200 in 6151ms
+ GET /api/reports/sales?preset=today 200 in 6217ms
+ GET /api/reports/customers?preset=today 200 in 6213ms
+ GET /api/reports/payments?preset=today 200 in 491ms
+ GET /api/reports/returns?preset=today 200 in 529ms
+ GET /api/reports/sales?preset=today 200 in 591ms
+ GET /api/reports/customers?preset=today 200 in 562ms
+ GET /api/reports/products?preset=today 200 in 784ms
+ GET /api/reports/payments?preset=last7 200 in 744ms
+ GET /api/reports/products?preset=last7 200 in 756ms
+ GET /api/reports/sales?preset=last7 200 in 778ms
+ GET /api/reports/returns?preset=last7 200 in 826ms
+ GET /api/reports/customers?preset=last7 200 in 882ms
+ ○ Compiling /inventory ...
+ ✓ Compiled /inventory in 1510ms (1221 modules)
+ ○ Compiling /api/subscription ...
+ ✓ Compiled /api/subscription in 1300ms (1224 modules)
+ GET /api/subscription 200 in 2746ms
+ GET /api/subscription 200 in 209ms
+ ○ Compiling /api/staff ...
+ ✓ Compiled /api/staff in 1886ms (1228 modules)
+ GET /api/staff 200 in 2950ms
+ GET /api/staff 200 in 275ms
