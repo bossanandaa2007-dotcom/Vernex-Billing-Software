@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { productSchema } from '@/schema';
 import { NextResponse } from 'next/server';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 import { authErrorResponse } from '@/lib/auth';
 import { requirePaidFeature } from '@/lib/guards';
 import { writeAuditLog } from '@/lib/audit';
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   const { productName, stockProduct, buyPrice, sellPrice, category } = parsed.data;
-  const id = `PRD-${uuidv4().slice(0, 8)}`;
+  const id = `PRD-${randomUUID().slice(0, 8)}`;
 
   try {
     const product = await db.productStock.create({
@@ -43,4 +43,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unable to create product.' }, { status: 500 });
   }
 }
-

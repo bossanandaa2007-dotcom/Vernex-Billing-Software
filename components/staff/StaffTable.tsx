@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { CheckCircle2, Mail, Phone, RefreshCw, Search, ShieldCheck, UserPlus, UsersRound, XCircle } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadingState } from '@/components/ui/loading-state';
+import { userFacingError } from '@/lib/user-facing-error';
 
 type StaffRole = 'OWNER' | 'MANAGER' | 'CASHIER';
 type StaffStatus = 'ACTIVE' | 'INACTIVE';
@@ -31,24 +34,6 @@ const statusOptions: Array<{ label: string; value: StaffStatus | 'ALL' }> = [
   { label: 'Active', value: 'ACTIVE' },
   { label: 'Inactive', value: 'INACTIVE' },
 ];
-
-function getErrorMessage(value: unknown, fallback: string) {
-  if (typeof value === 'string') return value;
-  if (value && typeof value === 'object') {
-    const error = (value as { error?: unknown }).error;
-    if (typeof error === 'string') return error;
-    if (error && typeof error === 'object') {
-      const flattened = error as { formErrors?: unknown; fieldErrors?: Record<string, unknown> };
-      const formErrors = Array.isArray(flattened.formErrors) ? flattened.formErrors : [];
-      const fieldErrors = flattened.fieldErrors && typeof flattened.fieldErrors === 'object'
-        ? Object.values(flattened.fieldErrors).flatMap((item) => Array.isArray(item) ? item : [])
-        : [];
-      const message = [...formErrors, ...fieldErrors].filter((item): item is string => typeof item === 'string').join(' ');
-      if (message) return message;
-    }
-  }
-  return fallback;
-}
 
 function roleBadgeClass(role: StaffRole) {
   if (role === 'OWNER') return 'border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-900 dark:bg-purple-950/40 dark:text-purple-300';
@@ -78,11 +63,16 @@ export function StaffTable() {
   const load = async () => {
     setLoading(true);
     setError('');
-    const res = await fetch('/api/staff');
-    const data = await res.json();
-    if (!res.ok) setError(getErrorMessage(data, 'Unable to load staff.'));
-    else setStaff(data);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/staff');
+      const data = await res.json();
+      if (!res.ok) setError(userFacingError(data, 'Unable to load staff. Please try again.'));
+      else setStaff(data);
+    } catch {
+      setError('Unable to load staff. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -112,7 +102,7 @@ export function StaffTable() {
     const res = await fetch('/api/staff', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
     const data = await res.json();
     setSaving(false);
-    if (!res.ok) return setError(getErrorMessage(data, 'Unable to create staff.'));
+    if (!res.ok) return setError(userFacingError(data, 'Unable to add this staff member. Please check the details.'));
     setForm({ name: '', email: '', phone: '', role: 'CASHIER' });
     setNotice(`${data.name} was added to staff.`);
     setSelectedId(data.id);
@@ -126,7 +116,7 @@ export function StaffTable() {
     const res = await fetch(`/api/staff/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const data = await res.json().catch(() => null);
     setUpdatingId('');
-    if (!res.ok) return setError(getErrorMessage(data, 'Unable to update staff.'));
+    if (!res.ok) return setError(userFacingError(data, 'Unable to update this staff member.'));
     setNotice('Staff profile updated.');
     await load();
   };
@@ -153,12 +143,9 @@ export function StaffTable() {
                 <h2 className="text-lg font-semibold text-vernex-navy dark:text-white">Add Staff</h2>
                 <p className="text-sm text-vernex-muted dark:text-slate-300">Create a staff profile and assign an access role.</p>
               </div>
-              <Badge variant="outline" className="w-fit rounded-full border-vernex-border bg-vernex-surface text-vernex-navy dark:border-[#1E335F] dark:bg-vernex-dark dark:text-white">
-                Manual invite
-              </Badge>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <Input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Input id="staff-name" placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               <Input placeholder="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               <Input placeholder="Phone optional" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               <select className="h-9 rounded-md border border-vernex-border bg-white px-3 text-sm shadow-sm dark:border-[#1E335F] dark:bg-vernex-dark dark:text-white" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as StaffRole })}>
@@ -170,7 +157,7 @@ export function StaffTable() {
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button onClick={createStaff} disabled={saving}>
                 <UserPlus className="mr-2 h-4 w-4" />
-                {saving ? 'Creating...' : 'Create Staff'}
+                {saving ? 'Adding...' : 'Add Staff'}
               </Button>
               {notice && <p className="text-sm font-medium text-emerald-600 dark:text-emerald-300">{notice}</p>}
               {error && <p className="text-sm font-medium text-red-500">{error}</p>}
@@ -204,7 +191,7 @@ export function StaffTable() {
               </div>
             </div>
 
-            <table className="hidden w-full text-sm lg:table">
+            {!loading && filteredStaff.length > 0 && <table className="hidden w-full text-sm lg:table">
               <thead className="bg-vernex-surface text-left text-vernex-muted dark:bg-vernex-dark dark:text-slate-300">
                 <tr>
                   <th className="p-3">Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Last Login</th><th className="text-right pr-4">Actions</th>
@@ -230,9 +217,9 @@ export function StaffTable() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table>}
 
-            <div className="grid gap-3 p-4 lg:hidden">
+            {!loading && filteredStaff.length > 0 && <div className="grid gap-3 p-4 lg:hidden">
               {filteredStaff.map((member) => (
                 <button key={member.id} type="button" onClick={() => setSelectedId(member.id)} className={cn('rounded-xl border border-vernex-border bg-white p-4 text-left shadow-sm transition hover:border-emerald-500 dark:border-[#1E335F] dark:bg-vernex-dark', selectedStaff?.id === member.id && 'border-emerald-500 ring-2 ring-emerald-500/20')}>
                   <div className="flex items-start justify-between gap-3">
@@ -248,10 +235,17 @@ export function StaffTable() {
                   </div>
                 </button>
               ))}
-            </div>
+            </div>}
 
-            {!loading && !filteredStaff.length && (
-              <div className="p-10 text-center text-sm text-vernex-muted dark:text-slate-400">No staff match the current filters.</div>
+            {loading ? <LoadingState label="Loading staff..." /> : !filteredStaff.length && (
+              <EmptyState
+                icon={<UsersRound className="h-7 w-7" />}
+                title={query || roleFilter !== 'ALL' || statusFilter !== 'ALL' ? 'No matching staff found' : 'No staff members yet'}
+                description={query || roleFilter !== 'ALL' || statusFilter !== 'ALL' ? 'Try changing the search or filters.' : 'Add a staff member and assign their access role.'}
+                action={!query && roleFilter === 'ALL' && statusFilter === 'ALL'
+                  ? <Button onClick={() => document.getElementById('staff-name')?.focus()}><UserPlus className="mr-2 h-4 w-4" />Add Staff</Button>
+                  : undefined}
+              />
             )}
           </div>
         </div>

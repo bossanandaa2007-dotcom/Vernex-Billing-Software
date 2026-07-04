@@ -8,6 +8,7 @@ import {
   ClipboardList,
   ShieldCheck,
   ScrollText,
+  Users,
 } from 'lucide-react';
 import { NavItem } from '@/types/Navbar';
 
@@ -34,6 +35,12 @@ export const NAVBAR_ITEMS: NavItem[] = [
     title: 'Sales Records',
     path: '/records',
     icon: <Archive className="h-4 w-4" />,
+    roles: ['OWNER', 'MANAGER', 'CASHIER'],
+  },
+  {
+    title: 'Customers',
+    path: '/customers',
+    icon: <Users className="h-4 w-4" />,
     roles: ['OWNER', 'MANAGER', 'CASHIER'],
   },
   {

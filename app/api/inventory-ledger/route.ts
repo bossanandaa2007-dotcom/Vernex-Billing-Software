@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { authErrorResponse, requirePermission } from '@/lib/auth';
 import { requirePaidFeature } from '@/lib/guards';
 import { writeAuditLog } from '@/lib/audit';
+import { safeOperationMessage } from '@/lib/api-error';
 
 const adjustmentSchema = z.object({
   productId: z.string().min(1),
@@ -39,6 +40,10 @@ export async function POST(request: Request) {
     });
     await writeAuditLog(ctx, { action: 'STOCK_ADJUSTED', entityType: 'ProductStock', entityId: result.product.id, description: `Adjusted stock for ${result.product.name}`, metadata: { newStock: result.product.stock } });
     return NextResponse.json(result);
-  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Adjustment failed.' }, { status: 400 }); }
+  } catch (error) {
+    return NextResponse.json(
+      { error: safeOperationMessage(error, ['Product not found.'], 'Unable to adjust stock. Please try again.') },
+      { status: 400 }
+    );
+  }
 }
-

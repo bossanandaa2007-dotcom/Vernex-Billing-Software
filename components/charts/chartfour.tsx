@@ -159,9 +159,7 @@ const ChartFour: React.FC = () => {
       );
 
       setDataChart(formattedData);
-    } catch (error) {
-      console.error('Error fetching data', error);
-    }
+    } catch {}
   }, [startDate, endDate]);
 
   // Fetch data when startDate or endDate changes

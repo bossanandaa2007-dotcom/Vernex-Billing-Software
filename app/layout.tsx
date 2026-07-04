@@ -6,12 +6,12 @@ import './globals.css';
 import 'react-toastify/dist/ReactToastify.css';
 export const metadata: Metadata = {
   title: {
-    default: 'Vernex Billing Software',
-    template: '%s | Vernex Billing',
+    default: 'Vernex',
+    template: '%s | Vernex',
   },
   description:
-    'POS billing software for restaurants, shops, tea shops, and small enterprises.',
-  applicationName: 'Vernex Billing',
+    'Fast, reliable billing, sales, inventory, customer, and business reporting.',
+  applicationName: 'Vernex',
   icons: {
     icon: [
       { url: '/favicon.ico', type: 'image/x-icon' },

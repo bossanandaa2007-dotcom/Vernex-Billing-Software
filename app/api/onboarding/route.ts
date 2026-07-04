@@ -69,7 +69,6 @@ export async function POST(request: Request) {
   } catch (error) {
     const response = authErrorResponse(error);
     if (response) return response;
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to complete onboarding.' }, { status: 400 });
+    return NextResponse.json({ error: 'Unable to complete account setup. Please try again.' }, { status: 400 });
   }
 }
-

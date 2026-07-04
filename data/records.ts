@@ -32,7 +32,8 @@ export async function fetchRecords({
   skip: number;
   period?: RecordsPeriod;
 }) {
-  const ctx = await getCurrentUserContext();
+  try {
+    const ctx = await getCurrentUserContext();
   const trimmedQuery = query?.trim();
   const range = period === 'all' ? null : getPeriodRange(period);
   const where = {
@@ -62,7 +63,7 @@ export async function fetchRecords({
     db.shopData.findFirst({ where: { businessId: ctx.businessId } }),
   ]);
 
-  return {
+    return {
     data: results.map((transaction) => ({
       id: transaction.id,
       billNumber: transaction.billNumber ?? transaction.id,
@@ -84,5 +85,12 @@ export async function fetchRecords({
       totalPages: Math.ceil(totalTransactions / take),
       totalTransactions,
     },
-  };
+    };
+  } catch {
+    return {
+      data: [],
+      currency: 'INR',
+      metadata: { hasNextPage: false, totalPages: 0, totalTransactions: 0 },
+    };
+  }
 }

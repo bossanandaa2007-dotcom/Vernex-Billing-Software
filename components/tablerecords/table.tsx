@@ -5,11 +5,13 @@ import TableBodyRecords from './components/TableBody';
 import { fetchRecords } from '@/data/records';
 import type { RecordsPeriod } from '@/data/records';
 import { PageProps } from '@/types/paginations';
-import { PaginationDemo } from '@/components/paginations/pagination';
+import { Pagination } from '@/components/paginations/pagination';
 import { SearchInput } from '@/components/search/search';
 import { formatMoney } from '@/lib/currency';
 import { CalendarDays, CircleDollarSign, CreditCard, ReceiptText } from 'lucide-react';
 import Link from 'next/link';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Button } from '@/components/ui/button';
 
 const periodOptions: Array<{ label: string; value: RecordsPeriod }> = [
   { label: 'All', value: 'all' },
@@ -19,11 +21,12 @@ const periodOptions: Array<{ label: string; value: RecordsPeriod }> = [
 ];
 
 export async function Records(props: PageProps) {
-  const pageNumber = Number(props?.searchParams?.page || 1);
+  const searchParams = (await props.searchParams) ?? {};
+  const pageNumber = Number(searchParams.page || 1);
   const take = 5;
   const skip = (pageNumber - 1) * take;
-  const search = typeof props?.searchParams?.search === 'string' ? props.searchParams.search : undefined;
-  const periodParam = typeof props?.searchParams?.period === 'string' ? props.searchParams.period : 'all';
+  const search = typeof searchParams.search === 'string' ? searchParams.search : undefined;
+  const periodParam = typeof searchParams.period === 'string' ? searchParams.period : 'all';
   const period = periodOptions.some((item) => item.value === periodParam) ? periodParam as RecordsPeriod : 'all';
   const { data, metadata, currency } = await fetchRecords({ take, skip, query: search, period });
   const visibleRevenue = data.reduce((sum, item) => sum + item.totalAmount, 0);
@@ -44,7 +47,7 @@ export async function Records(props: PageProps) {
 
   return (
     <Card className="flex h-full flex-col overflow-hidden">
-      <CardHeader className="border-b bg-gradient-to-r from-white via-emerald-50/60 to-white dark:from-vernex-navy dark:via-[#0D2B4F] dark:to-vernex-navy">
+      <CardHeader className="border-b border-vernex-border bg-white dark:border-[#1E335F] dark:bg-vernex-navy">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <CardTitle>Transaction History</CardTitle>
@@ -93,12 +96,19 @@ export async function Records(props: PageProps) {
         {data.length ? (
           <Table><TableHeadRecords /><TableBodyRecords data={data} currency={currency} /></Table>
         ) : (
-          <div className="rounded-xl border border-dashed border-vernex-border py-16 text-center text-sm text-vernex-muted dark:border-[#1E335F]">
-            No completed sales match the current filters.
-          </div>
+          <EmptyState
+            icon={<ReceiptText className="h-7 w-7" />}
+            title={search || period !== 'all' ? 'No matching sales found' : 'No sales recorded today'}
+            description={search || period !== 'all'
+              ? 'Try a different search or date filter.'
+              : 'Your completed sales will appear here once billing starts.'}
+            action={search || period !== 'all'
+              ? <Button asChild variant="outline"><Link href="/records">Clear Filters</Link></Button>
+              : <Button asChild><Link href="/orders">Create Bill</Link></Button>}
+          />
         )}
       </CardContent>
-      <CardFooter className="mt-auto border-t bg-white/70 py-4 dark:bg-vernex-navy"><PaginationDemo {...metadata} /></CardFooter>
+      <CardFooter className="mt-auto border-t bg-white/70 py-4 dark:bg-vernex-navy"><Pagination {...metadata} /></CardFooter>
     </Card>
   );
 }

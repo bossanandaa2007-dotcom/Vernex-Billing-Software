@@ -6,7 +6,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { PaginationDemo } from '@/components/paginations/pagination';
+import { Pagination } from '@/components/paginations/pagination';
 import { fetchProduct } from '@/data/product';
 import { PageProps } from '@/types/paginations';
 import AddButtonComponent from './components/btn/addProduct';
@@ -17,26 +17,34 @@ import { Barcode, Boxes, PackageSearch, ShoppingBag } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Button } from '@/components/ui/button';
 
 export default async function TableProduct(props: PageProps) {
-  const pageNumber = Number(props?.searchParams?.page || 1);
+  const searchParams = (await props.searchParams) ?? {};
+  const pageNumber = Number(searchParams.page || 1);
   const take = 12;
   const skip = (pageNumber - 1) * take;
   const search =
-    typeof props?.searchParams?.search === 'string'
-      ? props?.searchParams?.search
+    typeof searchParams.search === 'string'
+      ? searchParams.search
       : undefined;
   const category =
-    typeof props?.searchParams?.category === 'string'
-      ? props.searchParams.category
+    typeof searchParams.category === 'string'
+      ? searchParams.category
       : undefined;
 
   const result = await fetchProduct({ take, skip, query: search, category });
   if (!result) {
     return (
       <Card className="w-full border-vernex-border/80 shadow-sm">
-        <CardContent className="py-16 text-center text-sm text-vernex-muted">
-          Failed to fetch product data.
+        <CardContent>
+          <EmptyState
+            icon={<PackageSearch className="h-7 w-7" />}
+            title="Products are unavailable"
+            description="We could not load your products. Please check your connection and try again."
+            action={<Button asChild variant="outline"><Link href="/product">Try Again</Link></Button>}
+          />
         </CardContent>
       </Card>
     );
@@ -116,7 +124,7 @@ export default async function TableProduct(props: PageProps) {
                   variant="outline"
                   className={cn(
                     'cursor-pointer rounded-full transition hover:border-emerald-500 hover:bg-emerald-500/10',
-                    props.searchParams?.category === category && 'border-emerald-600 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30'
+                    searchParams.category === category && 'border-emerald-600 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30'
                   )}
                 >
                   {category.charAt(0).toUpperCase() + category.slice(1).toLowerCase()}
@@ -173,19 +181,21 @@ export default async function TableProduct(props: PageProps) {
             })}
           </div>
         ) : (
-          <div className="flex min-h-[420px] flex-col items-center justify-center px-6 py-12 text-center">
-            <div className="rounded-full bg-emerald-500/10 p-4 text-emerald-600">
-              <Boxes className="h-8 w-8" />
-            </div>
-            <div className="mt-4 font-semibold">No products found</div>
-            <p className="mt-1 max-w-sm text-sm text-vernex-muted dark:text-slate-400">
-              Try another search or add a product to start building your catalog.
-            </p>
-          </div>
+          <EmptyState
+            icon={<Boxes className="h-7 w-7" />}
+            title={search || category ? 'No matching products found' : 'No products added yet'}
+            description={search || category
+              ? 'Try a different search or clear the current filters.'
+              : 'Start by adding your first product to begin selling.'}
+            action={search || category
+              ? <Button asChild variant="outline"><Link href="/product">Clear Filters</Link></Button>
+              : <AddButtonComponent />}
+            className="min-h-[420px]"
+          />
         )}
       </CardContent>
       <CardFooter className="border-t border-vernex-border bg-white/80 p-4 dark:border-[#1E335F] dark:bg-vernex-navy">
-        <PaginationDemo {...metadata} />
+        <Pagination {...metadata} />
       </CardFooter>
     </Card>
   );

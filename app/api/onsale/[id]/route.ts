@@ -4,7 +4,8 @@ import { NextResponse } from 'next/server';
 import { authErrorResponse } from '@/lib/auth';
 import { requirePaidFeature } from '@/lib/guards';
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   let ctx;
   try { ctx = await requirePaidFeature(request, 'POS_BILLING'); } catch (error) { const response = authErrorResponse(error); if (response) return response; throw error; }
   const parsed = orderSchema.safeParse(await request.json());
@@ -13,7 +14,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 
   const line = await db.onSaleProduct.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { transaction: true, product: { include: { productstock: true } } },
   });
   if (!line || !line.product || line.transaction.businessId !== ctx.businessId) return NextResponse.json({ error: 'Cart line not found.' }, { status: 404 });
@@ -23,17 +24,17 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 
   return NextResponse.json(
-    await db.onSaleProduct.update({ where: { id: params.id }, data: { quantity: parsed.data.qTy } })
+    await db.onSaleProduct.update({ where: { id }, data: { quantity: parsed.data.qTy } })
   );
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   let ctx;
   try { ctx = await requirePaidFeature(request, 'POS_BILLING'); } catch (error) { const response = authErrorResponse(error); if (response) return response; throw error; }
-  const line = await db.onSaleProduct.findUnique({ where: { id: params.id }, include: { transaction: true } });
+  const line = await db.onSaleProduct.findUnique({ where: { id }, include: { transaction: true } });
   if (!line || line.transaction.businessId !== ctx.businessId) return NextResponse.json({ error: 'Cart line not found.' }, { status: 404 });
   if (line.transaction.isComplete) return NextResponse.json({ error: 'Completed bills cannot be changed.' }, { status: 409 });
-  await db.onSaleProduct.delete({ where: { id: params.id } });
+  await db.onSaleProduct.delete({ where: { id } });
   return NextResponse.json({ success: true });
 }
-

@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/breadcrumb';
 
 function Bread() {
-  // Get the current pathname from Next.js router
   const pathname = usePathname();
 
   // Split the pathname into segments, filtering out any empty segments

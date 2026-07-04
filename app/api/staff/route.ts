@@ -59,6 +59,6 @@ export async function POST(request: Request) {
   } catch (error) {
     const response = authErrorResponse(error);
     if (response) return response;
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to create staff.' }, { status: 400 });
+    return NextResponse.json({ error: 'Unable to add this staff member. Check that the email is not already in use.' }, { status: 400 });
   }
 }

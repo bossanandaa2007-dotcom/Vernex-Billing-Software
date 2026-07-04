@@ -11,15 +11,16 @@ const schema = z.object({
   status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
 });
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     const ctx = await requirePermission(request, 'STAFF_MANAGE');
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-    const existing = await db.staffProfile.findFirst({ where: { id: params.id, businessId: ctx.businessId } });
+    const existing = await db.staffProfile.findFirst({ where: { id, businessId: ctx.businessId } });
     if (!existing) return NextResponse.json({ error: 'Staff not found.' }, { status: 404 });
     const staff = await db.staffProfile.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...parsed.data,
         phone: parsed.data.phone || undefined,
@@ -33,4 +34,3 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: 'Unable to update staff.' }, { status: 400 });
   }
 }
-

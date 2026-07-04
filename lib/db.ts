@@ -1,4 +1,7 @@
 import { PrismaClient } from "@prisma/client";
+import { getServerEnvironment } from "@/lib/env.server";
+
+getServerEnvironment();
 
 declare global {
   var prisma: PrismaClient | undefined;

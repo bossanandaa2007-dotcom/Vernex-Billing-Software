@@ -1,5 +1,4 @@
 'use client';
-import '../globals.css';
 import React, { useState, useEffect } from 'react';
 interface RootLayoutProps {
   children: React.ReactNode;
@@ -19,9 +18,13 @@ import { NAVBAR_ITEMS } from '@/constant/navbarMenu';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { TrialBanner } from '@/components/subscription/TrialBanner';
+import { getAuthContext } from '@/lib/client-data';
+import { LogoutButton } from '@/components/auth/LogoutButton';
+import { MobileBottomNav } from '@/components/dashboard/MobileBottomNav';
+import Image from 'next/image';
 const RootLayout = ({ children }: RootLayoutProps) => {
-  const [storeName, setStoreName] = useState('Vernex Demo Shop');
-  const [role, setRole] = useState<string>('OWNER');
+  const [storeName, setStoreName] = useState('Vernex');
+  const [role, setRole] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
   const showHeaderSearch = pathname !== '/home';
@@ -42,23 +45,20 @@ const RootLayout = ({ children }: RootLayoutProps) => {
         const shopdata = response.data?.data;
 
         if (response.status === 200) {
-          setStoreName(shopdata?.name || 'Vernex Demo Shop');
-        } else {
-          toast.error('Failed to fetch data: ' + shopdata.error);
+          setStoreName(shopdata?.name || 'Vernex');
         }
-      } catch (error: any) {
-        toast.error(
-          'Failed to fetch data: ' +
-            (error.response?.data.error || error.message)
-        );
+      } catch {
+        toast.error('Unable to load business details. Please check your connection.');
       }
     };
 
     fetchShopData();
-    fetch('/api/auth/context')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setRole(data?.user?.role ?? 'OWNER'))
-      .catch(() => setRole('OWNER'));
+    getAuthContext()
+      .then((data) => {
+        if (!data?.user?.role) throw new Error('Missing role');
+        setRole(data.user.role);
+      })
+      .catch(() => window.location.replace('/login?message=session-expired'));
 
     const handleEventBusEvent = () => {
       fetchShopData();
@@ -72,13 +72,13 @@ const RootLayout = ({ children }: RootLayoutProps) => {
     };
   }, []);
   const route = NAVBAR_ITEMS.find((item) => item.path === pathname);
-  const denied = route?.roles && !route.roles.includes(role as any);
+  const denied = role && route?.roles && !route.roles.includes(role as any);
 
   return (
     <div className="bg-vernex-surface dark:bg-vernex-dark">
       <div className="min-h-screen w-full">
         <aside
-          className={`fixed inset-y-0 left-0 z-30 hidden border-r border-vernex-gold/20 bg-vernex-dark transition-[width] duration-300 md:block ${
+          className={`fixed inset-y-0 left-0 z-30 hidden border-r border-vernex-gold/20 bg-vernex-dark transition-[width] duration-300 lg:block ${
             collapsed ? 'w-[92px]' : 'w-[220px] lg:w-[280px]'
           }`}
         >
@@ -103,30 +103,42 @@ const RootLayout = ({ children }: RootLayoutProps) => {
                   <Store className="h-4 w-4" />
                 </div>
               )}
+              <div className="mt-3">
+                <LogoutButton collapsed={collapsed} />
+              </div>
             </div>
           </div>
         </aside>
         <div
           className={`flex min-h-screen flex-col transition-[margin-left] duration-300 ${
-            collapsed ? 'md:ml-[92px]' : 'md:ml-[220px] lg:ml-[280px]'
+            collapsed ? 'lg:ml-[92px]' : 'lg:ml-[280px]'
           }`}
         >
           <TrialBanner />
-          <header className="flex h-14 items-center gap-3 border-b border-vernex-border bg-white px-4 shadow-sm lg:h-[72px] lg:px-6 dark:border-[#1E335F] dark:bg-vernex-dark">
+          <header className="flex h-16 items-center gap-2 border-b border-white/10 bg-vernex-dark px-3 shadow-sm sm:gap-3 sm:px-4 lg:h-[72px] lg:border-vernex-border lg:bg-white lg:px-6 dark:border-[#1E335F] dark:bg-vernex-dark">
             <Sheet>
               <SheetTrigger asChild>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="shrink-0 md:hidden"
+                  className="h-11 w-11 shrink-0 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white lg:hidden"
                 >
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">Toggle navigation menu</span>
                 </Button>
               </SheetTrigger>
-              <NavbarSheet />
+              <NavbarSheet storeName={storeName} />
             </Sheet>
-            <Bread />
+            <div className="flex min-w-0 flex-1 items-center justify-center gap-2 lg:hidden">
+              <span className="grid h-9 w-10 shrink-0 place-items-center overflow-hidden rounded-md bg-white p-1">
+                <Image src="/assets/vernex-logo.png" alt="Vernex logo" width={40} height={30} className="h-full w-full object-contain" />
+              </span>
+              <span className="min-w-0 leading-tight text-white">
+                <span className="block truncate text-sm font-bold">VERNEX</span>
+                <span className="block truncate text-[10px] text-vernex-gold-soft">Billing Software</span>
+              </span>
+            </div>
+            <div className="hidden lg:block"><Bread /></div>
             {showHeaderSearch && (
               <div className="relative ml-auto hidden min-w-0 flex-1 max-w-xl lg:block">
                 <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-vernex-muted" />
@@ -141,25 +153,29 @@ const RootLayout = ({ children }: RootLayoutProps) => {
               <Store className="h-4 w-4 text-vernex-gold" />
               <span className="max-w-40 truncate">{storeName}</span>
             </div>
-            <Button variant="outline" size="icon" className="relative">
+            <Button variant="outline" size="icon" className="relative h-11 w-11 shrink-0 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white lg:border-vernex-border lg:bg-white lg:text-vernex-navy lg:hover:bg-vernex-surface dark:border-[#1E335F] dark:bg-vernex-navy dark:text-white">
               <Bell className="h-4 w-4" />
               <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-vernex-gold" />
               <span className="sr-only">Notifications</span>
             </Button>
-            <ModeToggle />
-            <Button variant="outline" size="icon" asChild>
+            <div className="hidden sm:block"><ModeToggle /></div>
+            <Button variant="outline" size="icon" asChild className="h-11 w-11 shrink-0 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white lg:border-vernex-border lg:bg-white lg:text-vernex-navy lg:hover:bg-vernex-surface dark:border-[#1E335F] dark:bg-vernex-navy dark:text-white">
               <Link href="/settings">
                 <Settings className="h-4 w-4" />
                 <span className="sr-only">Settings</span>
               </Link>
             </Button>
           </header>
-          <main className="flex flex-1 flex-col gap-4 bg-vernex-surface p-4 lg:gap-6 lg:p-6 dark:bg-vernex-dark">
+          <main className="flex min-w-0 flex-1 flex-col gap-4 bg-vernex-surface px-3 py-4 pb-24 sm:px-4 md:pb-6 lg:gap-6 lg:p-6 dark:bg-vernex-dark">
             <div
               className="flex flex-1 items-start justify-center"
               x-chunk="dashboard-02-chunk-1"
             >
-              {denied ? (
+              {!role ? (
+                <div className="flex min-h-48 w-full items-center justify-center text-sm text-vernex-muted">
+                  Verifying your account...
+                </div>
+              ) : denied ? (
                 <div className="w-full rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
                   <h1 className="text-lg font-semibold">Access denied</h1>
                   <p className="mt-1 text-sm">Your current role does not have permission to open this page.</p>
@@ -167,6 +183,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
               ) : children}
             </div>
           </main>
+          <MobileBottomNav />
         </div>
       </div>
     </div>

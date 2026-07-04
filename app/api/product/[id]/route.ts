@@ -5,7 +5,8 @@ import { authErrorResponse } from '@/lib/auth';
 import { requirePaidFeature } from '@/lib/guards';
 import { writeAuditLog } from '@/lib/audit';
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   let ctx;
   try {
     ctx = await requirePaidFeature(request, 'PRODUCT_WRITE');
@@ -22,14 +23,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   const { productName, stockProduct, buyPrice, sellPrice, category } = parsed.data;
   try {
     const product = await db.productStock.update({
-      where: { id: params.id, businessId: ctx.businessId },
+      where: { id, businessId: ctx.businessId },
       data: {
         name: productName.trim(),
         stock: stockProduct,
         price: buyPrice,
         cat: category,
         Product: {
-          update: { where: { productId: params.id }, data: { sellprice: sellPrice } },
+          update: { where: { productId: id }, data: { sellprice: sellPrice } },
         },
       },
       include: { Product: true },
@@ -42,7 +43,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   let ctx;
   try {
     ctx = await requirePaidFeature(request, 'PRODUCT_WRITE');
@@ -52,11 +54,10 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     throw error;
   }
   try {
-    await db.productStock.delete({ where: { id: params.id, businessId: ctx.businessId } });
-    await writeAuditLog(ctx, { action: 'PRODUCT_DELETED_OR_DEACTIVATED', entityType: 'ProductStock', entityId: params.id, description: `Deleted product ${params.id}` });
+    await db.productStock.delete({ where: { id, businessId: ctx.businessId } });
+    await writeAuditLog(ctx, { action: 'PRODUCT_DELETED_OR_DEACTIVATED', entityType: 'ProductStock', entityId: id, description: `Deleted product ${id}` });
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: 'Product not found.' }, { status: 404 });
   }
 }
-

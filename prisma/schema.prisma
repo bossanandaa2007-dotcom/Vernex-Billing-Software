@@ -12,10 +12,6 @@ generator custom_generator {
   provider = "prisma-generator-fake-data"
 }
 
-generator dbml {
-  provider = "prisma-dbml-generator"
-}
-
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
@@ -97,14 +93,14 @@ model User {
 
 model ProductStock {
   id           String     @id @unique
-  businessId   String?
+  businessId   String
   name         String
   imageProduct String?
   price        Float
   stock        Float
   cat          CatProduct
 
-  business  Business?           @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  business  Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
   Product   Product[]
   movements InventoryMovement[]
 
@@ -143,7 +139,7 @@ model OnSaleProduct {
 
 model Transaction {
   id              String          @id @default(cuid())
-  businessId      String?
+  businessId      String
   billNumber      String?         @unique
   customerName    String?
   customerPhone   String?
@@ -163,7 +159,7 @@ model Transaction {
   completedAt     DateTime?
   isComplete      Boolean         @default(false)
   products        OnSaleProduct[]
-  business        Business?       @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customer        Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
   returns         SaleReturn[]
   returnStatus    ReturnStatus?
@@ -175,7 +171,7 @@ model Transaction {
 
 model Customer {
   id           String        @id @default(cuid())
-  businessId   String?
+  businessId   String
   name         String
   phone        String
   email        String?
@@ -186,7 +182,7 @@ model Customer {
   isActive     Boolean       @default(true)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  business     Business?     @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
   transactions Transaction[]
 
   @@index([businessId])
@@ -198,7 +194,7 @@ model Customer {
 
 model InventoryMovement {
   id                  String                @id @default(cuid())
-  businessId          String?
+  businessId          String
   productId           String?
   productNameSnapshot String
   movementType        InventoryMovementType
@@ -210,7 +206,7 @@ model InventoryMovement {
   referenceBillNumber String?
   reason              String?
   createdAt           DateTime              @default(now())
-  business            Business?             @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  business            Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
   product             ProductStock?         @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([businessId, createdAt])
@@ -220,7 +216,7 @@ model InventoryMovement {
 
 model SaleReturn {
   id                    String        @id @default(cuid())
-  businessId            String?
+  businessId            String
   originalTransactionId String
   originalBillNumber    String
   refundAmount          Decimal
@@ -228,7 +224,7 @@ model SaleReturn {
   reason                String
   status                ReturnStatus
   createdAt             DateTime      @default(now())
-  business              Business?     @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  business              Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
   transaction           Transaction   @relation(fields: [originalTransactionId], references: [id], onDelete: Restrict)
   items                 ReturnItem[]
 
@@ -253,9 +249,9 @@ model ReturnItem {
 
 model ShopData {
   id                  String    @id @default(cuid())
-  businessId          String?
+  businessId          String
   tax                 Float?    @default(0)
-  name                String?   @default("Vernex Demo Shop")
+  name                String?   @default("Vernex")
   country             String    @default("India")
   currency            String    @default("INR")
   taxMode             TaxMode   @default(GST)
@@ -271,16 +267,16 @@ model ShopData {
   showItemTax         Boolean   @default(true)
   showFooter          Boolean   @default(true)
   receiptSize         String    @default("80mm")
-  business            Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  business            Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
 }
 
 model BillSequence {
   id         String    @id @default("main")
-  businessId String?
+  businessId String
   nextNumber Int       @default(1)
-  business   Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
 }

@@ -6,11 +6,12 @@ export async function GET(request: Request) {
   try {
     const ctx = await requireAuth(request);
     const subscription = await getBusinessSubscriptionStatus(ctx.businessId);
-    return NextResponse.json({ subscription });
+    const response = NextResponse.json({ subscription });
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
   } catch (error) {
     const response = authErrorResponse(error);
     if (response) return response;
     return NextResponse.json({ error: 'Unable to load subscription status.' }, { status: 500 });
   }
 }
-

@@ -1,15 +1,18 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { StaffStatus, UserRole } from '@prisma/client';
+import { Prisma, StaffStatus, UserRole } from '@prisma/client';
 import { db } from '@/lib/db';
 import { hasPermission, isRoleAllowed, Permission } from '@/lib/permissions';
+import { getServerSupabase } from '@/lib/supabase.server';
 
-const DEFAULT_BUSINESS_ID = 'vernex-demo-business';
-const DEMO_AUTH_USER_ID = 'demo-owner-auth-user';
-const DEMO_EMAIL = 'owner@vernex.local';
 let defaultBusinessReady: Promise<unknown> | null = null;
 const testStaffReady = new Map<string, Promise<unknown>>();
+const lastLoginUpdates = new Map<string, number>();
+const ownerPlaceholderIds = [
+  'vernex-owner-auth-user',
+  'demo-owner-auth-user',
+  'phase6-owner',
+];
 
 export class AuthError extends Error {
   status: number;
@@ -28,60 +31,29 @@ export type CurrentUserContext = {
   role: UserRole;
 };
 
-function supabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !anon) return null;
-  return createClient(url, anon, { auth: { persistSession: false } });
-}
-
 export async function ensureDefaultBusiness() {
   if (defaultBusinessReady) return defaultBusinessReady;
-  const trialStartedAt = new Date();
-  const trialEndsAt = new Date(trialStartedAt);
-  trialEndsAt.setDate(trialEndsAt.getDate() + 14);
   defaultBusinessReady = (async () => {
-  const business = await db.business.upsert({
-    where: { id: DEFAULT_BUSINESS_ID },
-    update: {},
-    create: {
-      id: DEFAULT_BUSINESS_ID,
-      name: 'Vernex Demo Business',
-      country: 'India',
-      currency: 'INR',
-      taxMode: 'GST',
-      ownerUserId: DEMO_AUTH_USER_ID,
-      trialStartedAt,
-      trialEndsAt,
-      subscriptionStatus: 'TRIAL',
-      planName: 'Free Trial',
-    },
+    const business = await db.business.findFirst({
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!business) {
+      throw new AuthError('Vernex is not initialized. Run the Prisma seed command.', 503);
+    }
+    return business;
+  })().catch((error) => {
+    defaultBusinessReady = null;
+    throw error;
   });
-
-  await db.staffProfile.upsert({
-    where: { authUserId: DEMO_AUTH_USER_ID },
-    update: { businessId: business.id, role: 'OWNER', status: 'ACTIVE' },
-    create: {
-      authUserId: DEMO_AUTH_USER_ID,
-      businessId: business.id,
-      name: 'Vernex Owner',
-      email: DEMO_EMAIL,
-      role: 'OWNER',
-      status: 'ACTIVE',
-    },
-  });
-
-  return business;
-  })();
   return defaultBusinessReady;
 }
 
 async function userFromBearer(request?: Request) {
   const authHeader = request?.headers.get('authorization') ?? '';
   const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  const cookieToken = cookies().get('vernex-access-token')?.value;
+  const cookieToken = (await cookies()).get('vernex-access-token')?.value;
   const token = bearer || cookieToken;
-  const client = token ? supabase() : null;
+  const client = token ? getServerSupabase() : null;
   if (!token || !client) return null;
   const { data, error } = await client.auth.getUser(token);
   if (error || !data.user) return null;
@@ -90,19 +62,21 @@ async function userFromBearer(request?: Request) {
 
 export async function getCurrentUserContext(request?: Request): Promise<CurrentUserContext> {
   const testRole = request?.headers.get('x-vernex-test-role') as UserRole | null;
-  const testBusinessId = request?.headers.get('x-vernex-test-business') || DEFAULT_BUSINESS_ID;
+  const requestedBusinessId = request?.headers.get('x-vernex-test-business');
   if (process.env.NODE_ENV !== 'production' && testRole && ['OWNER', 'MANAGER', 'CASHIER'].includes(testRole)) {
-    await ensureDefaultBusiness();
+    const business = await ensureDefaultBusiness() as Awaited<ReturnType<typeof db.business.findFirst>>;
+    if (!business) throw new AuthError('Vernex is not initialized. Run the Prisma seed command.', 503);
+    const testBusinessId = requestedBusinessId || business.id;
     const key = `${testBusinessId}:${testRole}`;
     if (!testStaffReady.has(key)) {
       testStaffReady.set(key, db.staffProfile.upsert({
-      where: { authUserId: `phase6-${testRole.toLowerCase()}` },
+      where: { authUserId: `vernex-test-${testRole.toLowerCase()}` },
       update: { role: testRole, status: 'ACTIVE', businessId: testBusinessId },
       create: {
-        authUserId: `phase6-${testRole.toLowerCase()}`,
+        authUserId: `vernex-test-${testRole.toLowerCase()}`,
         businessId: testBusinessId,
-        name: `Phase 6 ${testRole}`,
-        email: `phase6-${testRole.toLowerCase()}@vernex.local`,
+        name: `Vernex Test ${testRole}`,
+        email: `test-${testRole.toLowerCase()}@vernex.app`,
         role: testRole,
         status: 'ACTIVE',
       },
@@ -120,16 +94,53 @@ export async function getCurrentUserContext(request?: Request): Promise<CurrentU
       staff = await db.staffProfile.findUnique({ where: { email } });
       if (staff) staff = await db.staffProfile.update({ where: { id: staff.id }, data: { authUserId: user.id } });
     }
-    if (!staff) throw new AuthError('No active staff profile found for this login.', 403);
-    if (staff.status !== StaffStatus.ACTIVE) throw new AuthError('Staff profile is inactive.', 403);
-    await db.staffProfile.update({ where: { id: staff.id }, data: { lastLoginAt: new Date() } });
+    if (!staff && email) {
+      staff = await db.$transaction(async (tx) => {
+        const business = await tx.business.findFirst({
+          where: { ownerUserId: { in: ownerPlaceholderIds } },
+          orderBy: { createdAt: 'asc' },
+        });
+        if (!business) return null;
+        const placeholder = await tx.staffProfile.findFirst({
+          where: {
+            authUserId: business.ownerUserId,
+            businessId: business.id,
+            role: UserRole.OWNER,
+            status: StaffStatus.ACTIVE,
+          },
+          orderBy: { createdAt: 'asc' },
+        });
+        if (!placeholder) return null;
+        const claimed = await tx.staffProfile.updateMany({
+          where: { id: placeholder.id, authUserId: { in: ownerPlaceholderIds } },
+          data: { authUserId: user.id, email },
+        });
+        if (!claimed.count) return null;
+        await tx.business.update({
+          where: { id: business.id },
+          data: { ownerUserId: user.id },
+        });
+        return tx.staffProfile.findUnique({ where: { id: placeholder.id } });
+      });
+    }
+    if (!staff) throw new AuthError('You do not have permission to access this workspace.', 403);
+    if (staff.status !== StaffStatus.ACTIVE) throw new AuthError('Your account is inactive. Contact the business owner.', 403);
+    const now = Date.now();
+    if (now - (lastLoginUpdates.get(staff.id) ?? 0) > 5 * 60 * 1000) {
+      await db.staffProfile.update({ where: { id: staff.id }, data: { lastLoginAt: new Date(now) } });
+      lastLoginUpdates.set(staff.id, now);
+    }
     return { authUserId: user.id, staffId: staff.id, businessId: staff.businessId, name: staff.name, email: staff.email, role: staff.role };
   }
 
   if (process.env.NODE_ENV !== 'production') {
-    await ensureDefaultBusiness();
-    const staff = await db.staffProfile.findUniqueOrThrow({ where: { authUserId: DEMO_AUTH_USER_ID } });
-    return { authUserId: DEMO_AUTH_USER_ID, staffId: staff.id, businessId: staff.businessId, name: staff.name, email: staff.email, role: staff.role };
+    const business = await ensureDefaultBusiness() as Awaited<ReturnType<typeof db.business.findFirst>>;
+    if (!business) throw new AuthError('Vernex is not initialized. Run the Prisma seed command.', 503);
+    const staff = await db.staffProfile.findFirstOrThrow({
+      where: { businessId: business.id, role: UserRole.OWNER, status: StaffStatus.ACTIVE },
+      orderBy: { createdAt: 'asc' },
+    });
+    return { authUserId: staff.authUserId, staffId: staff.id, businessId: staff.businessId, name: staff.name, email: staff.email, role: staff.role };
   }
 
   throw new AuthError('Unauthenticated.', 401);
@@ -154,6 +165,16 @@ export async function requirePermission(request: Request | undefined, permission
 export function authErrorResponse(error: unknown) {
   if (error instanceof AuthError) {
     return NextResponse.json({ error: error.message }, { status: error.status });
+  }
+  if (
+    error instanceof Prisma.PrismaClientInitializationError ||
+    error instanceof Prisma.PrismaClientKnownRequestError ||
+    error instanceof Prisma.PrismaClientUnknownRequestError
+  ) {
+    return NextResponse.json(
+      { error: 'Database is temporarily unavailable. Please try again shortly.' },
+      { status: 503 }
+    );
   }
   return null;
 }

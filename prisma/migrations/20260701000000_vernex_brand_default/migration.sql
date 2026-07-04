@@ -1,0 +1,1 @@
+ALTER TABLE "ShopData" ALTER COLUMN "name" SET DEFAULT 'Vernex';

@@ -25,24 +25,24 @@ async function main() {
   const trialEndsAt = new Date(trialStartedAt);
   trialEndsAt.setDate(trialEndsAt.getDate() + 14);
   const business = await prisma.business.upsert({
-    where: { id: 'vernex-demo-business' },
+    where: { id: 'vernex-primary-business' },
     update: {
-      name: 'Vernex Demo Business',
+      name: 'Vernex',
       country: 'India',
       currency: 'INR',
       taxMode: TaxMode.GST,
-      ownerUserId: 'demo-owner-auth-user',
+      ownerUserId: 'vernex-owner-auth-user',
       trialEndsAt,
       subscriptionStatus: 'TRIAL',
       planName: 'Free Trial',
     },
     create: {
-      id: 'vernex-demo-business',
-      name: 'Vernex Demo Business',
+      id: 'vernex-primary-business',
+      name: 'Vernex',
       country: 'India',
       currency: 'INR',
       taxMode: TaxMode.GST,
-      ownerUserId: 'demo-owner-auth-user',
+      ownerUserId: 'vernex-owner-auth-user',
       trialStartedAt,
       trialEndsAt,
       subscriptionStatus: 'TRIAL',
@@ -51,23 +51,23 @@ async function main() {
   });
 
   await prisma.staffProfile.upsert({
-    where: { authUserId: 'demo-owner-auth-user' },
+    where: { authUserId: 'vernex-owner-auth-user' },
     update: { businessId: business.id, role: 'OWNER', status: 'ACTIVE' },
     create: {
-      authUserId: 'demo-owner-auth-user',
+      authUserId: 'vernex-owner-auth-user',
       businessId: business.id,
       name: 'Vernex Owner',
-      email: 'owner@vernex.local',
+      email: 'admin@vernex.app',
       role: 'OWNER',
       status: 'ACTIVE',
     },
   });
 
   await prisma.staffProfile.upsert({
-    where: { authUserId: 'demo-manager-auth-user' },
+    where: { authUserId: 'vernex-manager-auth-user' },
     update: { businessId: business.id, role: 'MANAGER', status: 'ACTIVE' },
     create: {
-      authUserId: 'demo-manager-auth-user',
+      authUserId: 'vernex-manager-auth-user',
       businessId: business.id,
       name: 'Vernex Manager',
       email: 'manager@vernex.local',
@@ -77,10 +77,10 @@ async function main() {
   });
 
   await prisma.staffProfile.upsert({
-    where: { authUserId: 'demo-cashier-auth-user' },
+    where: { authUserId: 'vernex-cashier-auth-user' },
     update: { businessId: business.id, role: 'CASHIER', status: 'ACTIVE' },
     create: {
-      authUserId: 'demo-cashier-auth-user',
+      authUserId: 'vernex-cashier-auth-user',
       businessId: business.id,
       name: 'Vernex Cashier',
       email: 'cashier@vernex.local',
@@ -110,7 +110,7 @@ async function main() {
   if (!shop) {
     await prisma.shopData.create({
       data: {
-        name: 'Vernex Demo Shop',
+        name: 'Vernex',
         tax: 5,
         country: 'India',
         currency: 'INR',
@@ -124,9 +124,9 @@ async function main() {
   }
 
   const sequence = await prisma.billSequence.upsert({
-    where: { id: 'main' },
+    where: { id: business.id },
     update: { businessId: business.id },
-    create: { id: 'main', nextNumber: 1, businessId: business.id },
+    create: { id: business.id, nextNumber: 1, businessId: business.id },
   });
   let nextNumber = sequence.nextNumber;
   const unnumberedSales = await prisma.transaction.findMany({
@@ -140,12 +140,7 @@ async function main() {
     });
     nextNumber += 1;
   }
-  await prisma.billSequence.update({ where: { id: 'main' }, data: { nextNumber } });
-
-  await prisma.customer.updateMany({ where: { businessId: null }, data: { businessId: business.id } });
-  await prisma.transaction.updateMany({ where: { businessId: null }, data: { businessId: business.id } });
-  await prisma.inventoryMovement.updateMany({ where: { businessId: null }, data: { businessId: business.id } });
-  await prisma.saleReturn.updateMany({ where: { businessId: null }, data: { businessId: business.id } });
+  await prisma.billSequence.update({ where: { id: business.id }, data: { nextNumber } });
 
   console.log(`Seeded ${products.length} linked products.`);
 }

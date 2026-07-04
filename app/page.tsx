@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { TypewriterEffect } from '@/components/ui/type-writer';
 import Link from 'next/link';
+import Image from 'next/image';
 export default function Home() {
   const words = [
     {
@@ -26,11 +27,10 @@ export default function Home() {
   return (
     <main>
       <div className="relative flex h-screen w-full items-center justify-center bg-vernex-surface dark:bg-vernex-dark">
-        {/* Radial gradient for the container to give a faded look */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(201,151,43,0.16),transparent_35%)]"></div>
         <div className="relative z-10 flex flex-col items-center justify-center h-[40rem] ">
+          <Image src="/assets/vernex-logo.png" alt="Vernex" width={128} height={128} className="mb-6 h-28 w-28 object-contain" priority />
           <p className="text-neutral-800 dark:text-neutral-200 text-xl  mb-10">
-            Welcome to Vernex Billing Software
+            Welcome to Vernex
           </p>
           <TypewriterEffect words={words} />
           <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 space-x-0 md:space-x-4 mt-10">

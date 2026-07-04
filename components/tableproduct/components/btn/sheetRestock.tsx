@@ -80,8 +80,6 @@ export function SheetRestock({
           ...fieldErrors,
         }));
       } else {
-        console.error(error);
-        // Handle other types of errors here
         toast.error('An error occurred. Please try again later.');
       }
     } finally {
@@ -102,10 +100,10 @@ export function SheetRestock({
             <Cross2Icon className="h-4 w-4" />
             <span className="sr-only">Close</span>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Reason</Label><Input className="col-span-3" value={reason} onChange={(e) => setReason(e.target.value)} /></div>
+          <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-4 sm:gap-4"><Label className="text-left sm:text-right">Reason</Label><Input className="sm:col-span-3" value={reason} onChange={(e) => setReason(e.target.value)} /></div>
         </SheetHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-4 sm:gap-4">
             <Label htmlFor="stockProduct" className="text-right">
               Stock
             </Label>
