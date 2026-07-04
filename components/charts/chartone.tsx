@@ -122,9 +122,7 @@ const ChartOne: React.FC = () => {
 
       // Update dataChart with the processed data
       setDataChart(chartData);
-    } catch (error) {
-      console.error('Error fetching data', error);
-    }
+    } catch {}
   }, [startDate, endDate]);
 
   // Fetch data when startDate or endDate changes

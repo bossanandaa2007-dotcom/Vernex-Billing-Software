@@ -19,13 +19,13 @@ COPY .env .env
 # Generate Prisma
 RUN npx prisma generate
 
-# Build Next.js
+# Build the application
 RUN npm run build
 
 # Set environment variables 
 ENV NODE_ENV=production
 
-# Expose port Next.js
+# Expose the application port
 EXPOSE 3000
 
 # Run app

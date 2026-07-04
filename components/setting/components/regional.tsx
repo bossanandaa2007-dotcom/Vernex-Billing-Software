@@ -8,19 +8,23 @@ import eventBus from '@/lib/even';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
+import { Loader2 } from 'lucide-react';
 
 export default function RegionalSettings({ country, currency, taxMode }: { country: string; currency: string; taxMode: string }) {
   const [values, setValues] = useState({ country, currency, taxMode });
+  const [saving, setSaving] = useState(false);
   useEffect(() => setValues({ country, currency, taxMode }), [country, currency, taxMode]);
   const currencies = values.country === 'India' ? ['INR'] : ['USD', 'EUR', 'GBP', 'AED'];
   const taxModes = values.country === 'India' ? ['GST', 'NONE'] : ['VAT', 'SALES_TAX', 'TAX', 'NONE'];
 
   const save = async () => {
+    setSaving(true);
     try {
       await axios.post('/api/shopdata', values);
       eventBus.emit('fetchStoreData');
-      toast.success('Regional settings saved.');
-    } catch { toast.error('Failed to save regional settings.'); }
+      toast.success('Changes saved successfully.');
+    } catch { toast.error('Unable to save changes. Please try again.'); }
+    finally { setSaving(false); }
   };
 
   return <Card>
@@ -30,6 +34,6 @@ export default function RegionalSettings({ country, currency, taxMode }: { count
       <div><Label>Currency</Label><Select value={values.currency} onValueChange={(currency) => setValues((current) => ({ ...current, currency }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{currencies.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select></div>
       <div><Label>Tax Mode</Label><Select value={values.taxMode} onValueChange={(taxMode) => setValues((current) => ({ ...current, taxMode }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{taxModes.map((item) => <SelectItem key={item} value={item}>{item.replace('_', ' ')}</SelectItem>)}</SelectContent></Select></div>
     </CardContent>
-    <CardFooter><Button onClick={save}>Save Regional Settings</Button></CardFooter>
+    <CardFooter><Button onClick={save} disabled={saving}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{saving ? 'Saving...' : 'Save Changes'}</Button></CardFooter>
   </Card>;
 }

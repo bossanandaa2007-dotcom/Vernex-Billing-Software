@@ -1,5 +1,6 @@
 import { formatMoney } from '@/lib/currency';
 import { ReceiptItem, ReceiptSale, ReceiptShop } from '@/lib/receipt';
+import Image from 'next/image';
 import { forwardRef } from 'react';
 
 export const PrintableReceipt = forwardRef<HTMLDivElement, { sale: ReceiptSale; items: ReceiptItem[]; shop: ReceiptShop }>(
@@ -10,8 +11,9 @@ export const PrintableReceipt = forwardRef<HTMLDivElement, { sale: ReceiptSale; 
     const showCustomer = shop.showCustomerDetails !== false;
     return <div ref={ref} className="receipt-print mx-auto w-full max-w-[80mm] bg-white p-4 font-mono text-[12px] leading-5 text-black">
       <div className="text-center">
-        {shop.showBusinessLogo !== false && <div className="text-lg font-bold">VERNEX BILLING</div>}
-        <div className="font-bold">{shop.name || 'Vernex Demo Shop'}</div>
+        {shop.showBusinessLogo !== false && <Image src="/assets/vernex-logo.png" alt="Vernex" width={52} height={52} className="mx-auto mb-1 h-12 w-12 object-contain" />}
+        <div className="text-lg font-bold">VERNEX</div>
+        {shop.name && shop.name !== 'Vernex' && <div className="font-bold">{shop.name}</div>}
         {shop.address && <div>{shop.address}</div>}
         {shop.phone && <div>Phone: {shop.phone}</div>}
         {shop.showTaxId !== false && shop.taxId && <div>{shop.country === 'India' ? 'GSTIN' : 'Tax ID'}: {shop.taxId}</div>}
@@ -33,7 +35,7 @@ export const PrintableReceipt = forwardRef<HTMLDivElement, { sale: ReceiptSale; 
         <Row label={taxLabel} value={formatMoney(sale.taxAmount, currency)} /><Row label="Grand Total" value={formatMoney(sale.totalAmount, currency)} bold />
         <Row label="Payment" value={`${sale.paymentMethod ?? '-'} / ${sale.paymentStatus}`} /><Row label="Received" value={formatMoney(sale.amountReceived, currency)} /><Row label="Change" value={formatMoney(sale.changeAmount, currency)} />
       </div>
-      <div className="text-center">{shop.showFooter !== false && <div>{shop.receiptFooter || 'Thank you for your business!'}</div>}<div className="mt-2 text-[10px]">Powered by Vernex Billing</div></div>
+      <div className="text-center">{shop.showFooter !== false && <div>{shop.receiptFooter || 'Thank you for your business!'}</div>}<div className="mt-2 text-[10px]">Powered by Vernex</div></div>
     </div>;
   }
 );

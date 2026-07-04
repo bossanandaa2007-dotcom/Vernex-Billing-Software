@@ -1,5 +1,5 @@
 import React from 'react';
-import { Orders } from '@/components/order/demo';
+import { PosBilling } from '@/components/order/pos-billing';
 import ErrorBoundary from '@/components/toaster/toaster';
 import { PageHeading } from '@/components/dashboard/page-heading';
 import type { Metadata } from 'next';
@@ -12,10 +12,10 @@ const page = () => {
     <div className="w-full h-full">
       <PageHeading
         title="POS Billing"
-        description="Create and manage the current customer billing transaction."
+        description="Find products, prepare the bill, and complete payment."
       />
       <ErrorBoundary>
-        <Orders />
+        <PosBilling />
       </ErrorBoundary>
     </div>
   );

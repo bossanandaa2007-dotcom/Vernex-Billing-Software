@@ -1,9 +1,9 @@
 'use client'; // Use client-side rendering
 
 import { useEffect, useRef, useState } from 'react'; // Import necessary hooks from React
-import { useRouter } from 'next/navigation'; // Import the useRouter hook from Next.js for routing
+import { useRouter } from 'next/navigation';
 import { useDebounce } from 'use-debounce'; // Import the useDebounce hook for debouncing
-import { usePathname, useSearchParams } from 'next/navigation'; // Import the usePathname hook from Next.js for getting the current pathname
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input'; // Import the Input component
 import { Search } from 'lucide-react'; // Import the Search icon component from Lucide React
 

@@ -2,6 +2,7 @@
 
 .env
 .env.local
+.env.production
 .env.*.local
 node_modules
 .next 
@@ -15,7 +16,7 @@ node_modules
 # testing
 /coverage
 
-# next.js
+# generated application output
 /.next/
 /out/
 
@@ -30,12 +31,10 @@ node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
 
 # local env files
 .env*.local
-
-# vercel
-.vercel
 
 # typescript
 *.tsbuildinfo

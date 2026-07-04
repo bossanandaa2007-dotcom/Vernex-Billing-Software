@@ -11,7 +11,7 @@ const page = () => {
     <div className="w-full h-full">
       <PageHeading
         title="Business Settings"
-        description="Configure the business name and billing tax preferences."
+        description="Manage business details, regional preferences, receipts, and bill numbering."
       />
       <Setting />
     </div>

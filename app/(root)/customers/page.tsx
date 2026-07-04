@@ -1,5 +1,14 @@
-import { redirect } from 'next/navigation';
+import { CustomerDirectory } from '@/components/customers/CustomerDirectory';
+import { PageHeading } from '@/components/dashboard/page-heading';
+import type { Metadata } from 'next';
 
-export default function CustomersRedirectPage() {
-  redirect('/orders');
+export const metadata: Metadata = { title: 'Customers' };
+
+export default function CustomersPage() {
+  return (
+    <div className="w-full">
+      <PageHeading title="Customers" description="Manage customer details and review purchase history." />
+      <CustomerDirectory />
+    </div>
+  );
 }

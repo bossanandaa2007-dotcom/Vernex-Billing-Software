@@ -148,7 +148,7 @@ Table ShopData {
   id String [pk]
   businessId String
   tax Float [default: 0]
-  name String [default: 'Vernex Demo Shop']
+  name String [default: 'Vernex']
   country String [not null, default: 'India']
   currency String [not null, default: 'INR']
   taxMode TaxMode [not null, default: 'GST']

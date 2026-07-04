@@ -11,10 +11,9 @@ export default function ReportsPage() {
     <div className="w-full">
       <PageHeading
         title="Reports"
-        description="Dynamic sales, payment, product, customer, staff, inventory, and returns insights."
+        description="Review sales, payments, products, customers, and returns."
       />
       <ReportsDashboard />
     </div>
   );
 }
-

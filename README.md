@@ -1,26 +1,38 @@
-# Point of Sale (POS) Application
+# Vernex
 
-This is a full-featured Point of Sale (POS) system built using **Next.js 14**, **Prisma ORM**, and **Supabase** for database management. The system is designed for managing product inventories, transactions, and sales reports, with a user-friendly interface for retail businesses.
+Vernex is a production billing and business operations application for sales,
+products, inventory, customers, staff, receipts, returns, and reporting.
 
-## Features
+## Local Setup
 
-- **Product Management**: Add, edit, and delete products with price, stock, and category information.
-- **Inventory Tracking**: Keep track of stock levels and restock as needed.
-- **Sales Transactions**: Record sales with real-time calculations for total amounts, taxes, and discounts.
-- **Sales Reports**: View daily, weekly, and monthly sales reports.
-- **Responsive Design**: Fully responsive for desktop, tablet, and mobile devices.
+1. Copy `.env.example` to `.env` and provide valid database and authentication values.
+2. Install dependencies with `npm install`.
+3. Generate the database client with `npx prisma generate`.
+4. Start the application with `npm run dev`.
 
-## Tech Stack
+The application is available at `http://localhost:3000`.
 
-- **Next.js 14**: React framework for building the user interface and server-side rendering.
-- **Prisma ORM**: Database ORM for easy interaction with Supabase PostgreSQL database.
-- **Supabase**: Hosted PostgreSQL database for handling data storage, authentication, and APIs.
-- **Tailwind CSS**: Utility-first CSS framework for styling the application.
+## Validation
 
-### Prerequisites
+```powershell
+npx tsc --noEmit
+npm run lint
+npm run build
+npm audit
+```
 
-- **Node.js** (v18 or later)
-- **npm** or **yarn**
-- **Supabase** account (for database setup)
-- **Prisma** installed globally
+Never commit local environment files or production credentials.
 
+## SaaS Integration
+
+The customer POS and sibling `vernex-super-admin-portal` remain separate Next.js applications connected to the same Supabase project.
+
+- Supabase Auth identifies each POS user.
+- `StaffProfile.authUserId` resolves the user to one required `businessId`.
+- Every tenant-owned table requires `businessId`.
+- POS APIs scope reads and writes to the authenticated business.
+- Supabase RLS exposes tenant reads only for the current business.
+- One Auth user carries the `vernex_super_admin` application claim for portal-wide access.
+- Privileged Auth provisioning and password reset/deletion stay server-only in the portal.
+
+Run `node scripts/verify-master-integration.mjs` against a development server on port 3001 to verify cross-tenant isolation.

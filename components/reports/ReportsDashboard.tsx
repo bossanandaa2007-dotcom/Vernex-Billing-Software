@@ -19,6 +19,8 @@ import {
   Users,
   WalletCards,
 } from 'lucide-react';
+import { LoadingState } from '@/components/ui/loading-state';
+import { EmptyState } from '@/components/ui/empty-state';
 
 const reportTypes = ['sales', 'payments', 'products', 'customers', 'returns'] as const;
 const loadTypes = ['sales', 'payments', 'products', 'customers', 'returns'] as const;
@@ -37,6 +39,7 @@ export function ReportsDashboard() {
   const [reports, setReports] = useState<any>({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const query = useMemo(() => {
     const params = new URLSearchParams({ preset });
@@ -60,9 +63,9 @@ export function ReportsDashboard() {
       )
     )
       .then((entries) => setReports(Object.fromEntries(entries)))
-      .catch((err) => setError(err.message))
+      .catch(() => setError('Unable to load reports. Please check your connection and try again.'))
       .finally(() => setLoading(false));
-  }, [query]);
+  }, [query, refreshKey]);
 
   const currency = reports.sales?.currency ?? 'INR';
   const paymentMethods = reports.payments?.country === 'India' ? ['CASH', 'UPI', 'CARD', 'CREDIT'] : ['CASH', 'CARD', 'ONLINE', 'CREDIT'];
@@ -71,11 +74,16 @@ export function ReportsDashboard() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-red-700">
+      <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300" role="alert">
         <div className="flex items-center gap-2 font-semibold"><AlertCircle className="h-5 w-5" /> Reports unavailable</div>
         <p className="mt-1 text-sm">{error}</p>
+        <Button className="mt-4" variant="outline" onClick={() => setRefreshKey((value) => value + 1)}>Try Again</Button>
       </div>
     );
+  }
+
+  if (loading && !Object.keys(reports).length) {
+    return <Card className="border-vernex-border/80 shadow-sm"><LoadingState label="Preparing reports..." /></Card>;
   }
 
   return (
@@ -139,7 +147,7 @@ export function ReportsDashboard() {
                 <Button key={type} variant="outline" asChild size="sm" className="rounded-xl">
                   <a href={exportHref(type)}>
                     <ArrowDownToLine className="mr-2 h-4 w-4" />
-                    {type}
+                    Export {type.charAt(0).toUpperCase() + type.slice(1)} CSV
                   </a>
                 </Button>
               ))}
@@ -230,6 +238,16 @@ function Section({ title, children, icon }: { title: string; children: React.Rea
 }
 
 function SimpleTable({ headers, rows, compact = false }: { headers: string[]; rows: any[][]; compact?: boolean }) {
+  if (!rows.length) {
+    return (
+      <EmptyState
+        icon={<BarChart3 className="h-7 w-7" />}
+        title="No report data yet"
+        description="Data for the selected period will appear here when activity is recorded."
+        className="min-h-48"
+      />
+    );
+  }
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -239,7 +257,7 @@ function SimpleTable({ headers, rows, compact = false }: { headers: string[]; ro
           </tr>
         </thead>
         <tbody>
-          {rows.length ? rows.map((row, index) => (
+          {rows.map((row, index) => (
             <tr key={index} className="border-b border-vernex-border transition hover:bg-vernex-surface/70 dark:border-[#1E335F] dark:hover:bg-vernex-dark/70">
               {row.map((cell, cellIndex) => (
                 <td key={cellIndex} className={`${compact ? 'px-3 py-3' : 'px-3 py-3.5'} ${cellIndex === 0 ? 'font-semibold text-vernex-navy dark:text-white' : ''}`}>
@@ -247,13 +265,7 @@ function SimpleTable({ headers, rows, compact = false }: { headers: string[]; ro
                 </td>
               ))}
             </tr>
-          )) : (
-            <tr>
-              <td colSpan={headers.length} className="px-3 py-12 text-center text-sm text-vernex-muted">
-                No data for this range.
-              </td>
-            </tr>
-          )}
+          ))}
         </tbody>
       </table>
     </div>

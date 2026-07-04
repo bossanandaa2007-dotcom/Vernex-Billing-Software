@@ -20,13 +20,13 @@ class ErrorBoundary extends Component<Props, State> {
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    toast.error(`An unexpected error occurred: ${error.message}`);
+  componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
+    toast.error('Something went wrong. Please try again later.');
   }
 
   render() {
     if (this.state.hasError) {
-      return <h1>Something went wrong.</h1>;
+      return <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700" role="alert">Something went wrong. Please try again later.</div>;
     }
 
     return this.props.children;

@@ -3,8 +3,11 @@ import axios from 'axios';
 export type DashboardPeriod = 'today' | 'week' | 'month';
 
 export async function getTotal(period: DashboardPeriod = 'today') {
-  const { data } = await axios.get('/api/dashboard', { params: { period } });
-  return data as {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const { data } = await axios.get('/api/dashboard', { params: { period } });
+      return data as {
     totalProducts: number;
     lowStockItems: number;
     todayBills: number;
@@ -23,5 +26,13 @@ export async function getTotal(period: DashboardPeriod = 'today') {
     itemsSold: number;
     currency: string;
     period: DashboardPeriod;
-  };
+      };
+    } catch (error) {
+      lastError = error;
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      if (attempt === 2 || (status !== undefined && status < 500)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, (attempt + 1) * 1500));
+    }
+  }
+  throw lastError;
 }

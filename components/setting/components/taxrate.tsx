@@ -53,15 +53,13 @@ const TaxrateCard: React.FC<TaxrateCardProps> = ({ tax, storeId }) => {
 
       await axios.post('/api/shopdata', validatedData);
 
-      toast.success('Tax updated successfully.');
+      toast.success('Changes saved successfully.');
       eventBus.emit('fetchStoreData');
     } catch (error) {
       if (error instanceof ZodError) {
-        // Handle ZodError
-        const fieldErrors = error.errors.map((err) => err.message);
-        toast.error(`${fieldErrors.join(', ')}`);
+        toast.error('Please enter a valid tax rate.');
       } else {
-        toast.error('Failed to update store tax.');
+        toast.error('Unable to save changes. Please try again.');
       }
     } finally {
       setIsLoading(false);
@@ -70,7 +68,7 @@ const TaxrateCard: React.FC<TaxrateCardProps> = ({ tax, storeId }) => {
 
   return (
     <>
-      <Card x-chunk="dashboard-04-chunk-1" className="my-5">
+      <Card>
         <CardHeader>
           <CardTitle>Tax Rate</CardTitle>
           <CardDescription>Use to set tax for your store.</CardDescription>
@@ -93,10 +91,10 @@ const TaxrateCard: React.FC<TaxrateCardProps> = ({ tax, storeId }) => {
             {isLoading ? (
               <>
                 <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
-                Please wait
+                Saving...
               </>
             ) : (
-              'Save'
+              'Save Changes'
             )}
           </Button>
         </CardFooter>

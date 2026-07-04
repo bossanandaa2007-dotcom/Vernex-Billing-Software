@@ -4,20 +4,21 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { NAVBAR_ITEMS } from '@/constant/navbarMenu';
 import { cn } from '@/lib/utils';
+import { getAuthContext } from '@/lib/client-data';
 
 function Navbar({ collapsed = false }: { collapsed?: boolean }) {
-  // Get the current pathname from Next.js router
   const pathname = usePathname();
-  const [role, setRole] = useState<string>('OWNER');
+  const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/auth/context')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setRole(data?.user?.role ?? 'OWNER'))
-      .catch(() => setRole('OWNER'));
+    getAuthContext()
+      .then((data) => setRole(data?.user?.role ?? null))
+      .catch(() => setRole(null));
   }, []);
 
-  const items = NAVBAR_ITEMS.filter((item) => !item.roles || item.roles.includes(role as any));
+  const items = role
+    ? NAVBAR_ITEMS.filter((item) => !item.roles || item.roles.includes(role as any))
+    : [];
 
   return (
     <>

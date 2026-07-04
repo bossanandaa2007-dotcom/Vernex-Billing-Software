@@ -36,12 +36,12 @@ const Dropdown = ({ records }: { records: Records }) => {
         <DropdownMenuTrigger asChild>
           <Button aria-haspopup="true" size="icon" variant="ghost">
             <MoreHorizontal className="h-4 w-4" />
-            <span className="sr-only">Toggle menu</span>
+            <span className="sr-only">Open sale actions</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={handleRedirect}>View Bill</DropdownMenuItem>
+          <DropdownMenuItem onClick={handleRedirect}>View Details</DropdownMenuItem>
           <DropdownMenuItem onClick={() => route.push(`/records/${records.id}?print=1`)}>Print Receipt</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

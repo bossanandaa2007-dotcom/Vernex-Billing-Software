@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { authErrorResponse } from '@/lib/auth';
 import { requirePaidFeature } from '@/lib/guards';
 import { writeAuditLog } from '@/lib/audit';
+import { safeOperationMessage } from '@/lib/api-error';
 
 const schema = z.object({
   transactionId: z.string().min(1),
@@ -58,6 +59,22 @@ export async function POST(request: Request) {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     if (result) await writeAuditLog(ctx, { action: 'RETURN_CREATED', entityType: 'SaleReturn', entityId: result.id, referenceNumber: result.originalBillNumber, description: `Created return for ${result.originalBillNumber}`, metadata: { refundAmount: Number(result.refundAmount) } });
     return NextResponse.json(result, { status: 201 });
-  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Return failed.' }, { status: 400 }); }
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: safeOperationMessage(
+          error,
+          [
+            'Completed sale not found.',
+            'selected sale item was not found.',
+            'Return quantity exceeds',
+            'can no longer be returned',
+            'no longer exists.',
+          ],
+          'Unable to process the return. Please try again.'
+        ),
+      },
+      { status: 400 }
+    );
+  }
 }
-

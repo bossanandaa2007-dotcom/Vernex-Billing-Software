@@ -14,6 +14,7 @@ import axios from 'axios';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ReloadIcon } from '@radix-ui/react-icons';
+import { toast } from 'react-toastify';
 type Data = {
   id: string;
 };
@@ -35,17 +36,11 @@ export function DeleteAlertDialog({
   const handleDelete = async () => {
     setLoading(true);
     try {
-      const response = await axios.delete(`/api/transactions/${data.id}`);
+      await axios.delete(`/api/transactions/${data.id}`);
       onClose();
       router.refresh();
-    } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        console.error('Server Error:', error.response?.data);
-      } else if (error instanceof Error) {
-        console.error('Error:', error.message);
-      } else {
-        console.error('Unknown error:', error);
-      }
+    } catch {
+      toast.error('Unable to delete this sale.');
     } finally {
       setLoading(false);
     }

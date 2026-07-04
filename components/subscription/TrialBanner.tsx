@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { getSubscription } from '@/lib/client-data';
 
 type Subscription = {
   status: 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'SUSPENDED';
@@ -15,8 +16,7 @@ export function TrialBanner() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
 
   useEffect(() => {
-    fetch('/api/subscription')
-      .then((res) => (res.ok ? res.json() : null))
+    getSubscription()
       .then((data) => setSubscription(data?.subscription ?? null))
       .catch(() => setSubscription(null));
   }, []);
@@ -32,7 +32,7 @@ export function TrialBanner() {
   if (subscription.isTrialExpired || subscription.status === 'EXPIRED' || subscription.status === 'SUSPENDED') {
     return (
       <div className="border-b border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-medium text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-        Your free trial has expired. Contact Vernex to activate your account.
+        Your trial has expired. Contact Vernex to activate your license.
       </div>
     );
   }
@@ -42,4 +42,3 @@ export function TrialBanner() {
     </div>
   );
 }
-

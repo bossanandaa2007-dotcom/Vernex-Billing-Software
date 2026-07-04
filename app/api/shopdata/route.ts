@@ -40,10 +40,10 @@ export async function GET(request: Request) {
     const ctx = await requireAuth(request);
     const cached = shopCache.get(ctx.businessId);
     if (cached && cached.expires > Date.now()) return NextResponse.json(cached.data);
-    const [stored, sequence] = await Promise.all([db.shopData.findFirst({ where: { businessId: ctx.businessId } }), db.billSequence.findUnique({ where: { id: 'main' } })]);
+    const [stored, sequence] = await Promise.all([db.shopData.findFirst({ where: { businessId: ctx.businessId } }), db.billSequence.findUnique({ where: { id: ctx.businessId } })]);
     const data = stored ?? {
       id: null,
-      name: 'Vernex Demo Shop',
+      name: 'Vernex',
       tax: 0,
       country: 'India',
       currency: 'INR',
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
   };
 
   if (billNextNumber !== undefined || values.billPrefix !== undefined || values.billPadding !== undefined) {
-    const currentSequence = await db.billSequence.findUnique({ where: { id: 'main' } });
+    const currentSequence = await db.billSequence.findUnique({ where: { id: ctx.businessId } });
     const candidate = formatBillNumber(billNextNumber ?? currentSequence?.nextNumber ?? 1, values.billPrefix ?? existing?.billPrefix ?? 'VNX', values.billPadding ?? existing?.billPadding ?? 6);
     if (await db.transaction.findUnique({ where: { billNumber: candidate } })) {
       return NextResponse.json({ error: `Bill number ${candidate} already exists. Choose a different next number or prefix.` }, { status: 409 });
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
     ? await db.shopData.update({ where: { id: existing.id }, data })
     : await db.shopData.create({
         data: {
-          name: values.storeName ?? 'Vernex Demo Shop',
+          name: values.storeName ?? 'Vernex',
           tax: values.tax ?? 0,
           country: values.country ?? 'India',
           currency: values.currency ?? 'INR',
@@ -123,17 +123,17 @@ export async function POST(request: Request) {
       });
 
   if (billNextNumber !== undefined) {
-    await db.billSequence.upsert({ where: { id: 'main' }, create: { id: 'main', businessId: ctx.businessId, nextNumber: billNextNumber }, update: { nextNumber: billNextNumber, businessId: ctx.businessId } });
+    await db.billSequence.upsert({ where: { id: ctx.businessId }, create: { id: ctx.businessId, businessId: ctx.businessId, nextNumber: billNextNumber }, update: { nextNumber: billNextNumber, businessId: ctx.businessId } });
   }
   shopCache.delete(ctx.businessId);
 
   await writeAuditLog(ctx, { action: 'SETTINGS_UPDATED', entityType: 'ShopData', entityId: saved.id, description: 'Updated business/settings data', metadata: Object.keys(values) });
   if (values.billPrefix !== undefined || values.billPadding !== undefined || billNextNumber !== undefined) {
-    await writeAuditLog(ctx, { action: 'BILL_SETTINGS_UPDATED', entityType: 'BillSequence', entityId: 'main', description: 'Updated bill number settings' });
+    await writeAuditLog(ctx, { action: 'BILL_SETTINGS_UPDATED', entityType: 'BillSequence', entityId: ctx.businessId, description: 'Updated bill number settings' });
   }
   if (values.showBusinessLogo !== undefined || values.showTaxId !== undefined || values.showCustomerDetails !== undefined || values.showItemTax !== undefined || values.showFooter !== undefined || values.receiptSize !== undefined) {
     await writeAuditLog(ctx, { action: 'RECEIPT_SETTINGS_UPDATED', entityType: 'ShopData', entityId: saved.id, description: 'Updated receipt settings' });
   }
 
-  return NextResponse.json({ data: { ...saved, billNextNumber: billNextNumber ?? (await db.billSequence.findUnique({ where: { id: 'main' } }))?.nextNumber ?? 1 } });
+  return NextResponse.json({ data: { ...saved, billNextNumber: billNextNumber ?? (await db.billSequence.findUnique({ where: { id: ctx.businessId } }))?.nextNumber ?? 1 } });
 }

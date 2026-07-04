@@ -8,6 +8,7 @@ import eventBus from '@/lib/even';
 import RegionalSettings from './components/regional';
 import ReceiptSettings from './components/receipt';
 import BillingSettings from './components/billing';
+import { LoadingState } from '@/components/ui/loading-state';
 export function Setting() {
   const [storeName, setStoreName] = useState<string | null>(null);
   const [storeId, setStoreId] = useState<string | null>(null);
@@ -17,6 +18,7 @@ export function Setting() {
   const [taxMode, setTaxMode] = useState('GST');
   const [receiptDetails, setReceiptDetails] = useState({ phone: '', address: '', taxId: '', receiptFooter: 'Thank you for your business!' });
   const [billing, setBilling] = useState({ billPrefix: 'VNX', billPadding: 6, billNextNumber: 1, showBusinessLogo: true, showTaxId: true, showCustomerDetails: true, showItemTax: true, showFooter: true });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchShopData = async () => {
@@ -35,7 +37,7 @@ export function Setting() {
 
         if (response.status === 200) {
           setStoreId(shopdata?.id ?? null);
-          setStoreName(shopdata?.name || 'Vernex Demo Shop');
+          setStoreName(shopdata?.name || 'Vernex');
           setTaxRate(shopdata?.tax ?? 0);
           setCountry(shopdata?.country ?? 'India');
           setCurrency(shopdata?.currency ?? 'INR');
@@ -47,14 +49,11 @@ export function Setting() {
             receiptFooter: shopdata?.receiptFooter ?? 'Thank you for your business!',
           });
           setBilling({ billPrefix: shopdata?.billPrefix ?? 'VNX', billPadding: shopdata?.billPadding ?? 6, billNextNumber: shopdata?.billNextNumber ?? 1, showBusinessLogo: shopdata?.showBusinessLogo ?? true, showTaxId: shopdata?.showTaxId ?? true, showCustomerDetails: shopdata?.showCustomerDetails ?? true, showItemTax: shopdata?.showItemTax ?? true, showFooter: shopdata?.showFooter ?? true });
-        } else {
-          toast.error('Failed to fetch data: ' + shopdata.error);
         }
-      } catch (error: any) {
-        toast.error(
-          'Failed to fetch data: ' +
-            (error.response?.data.error || error.message)
-        );
+      } catch {
+        toast.error('Unable to load settings. Please check your connection.');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -72,10 +71,14 @@ export function Setting() {
     };
   }, []);
 
+  if (loading) {
+    return <div className="rounded-xl border border-vernex-border bg-white shadow-sm dark:border-[#1E335F] dark:bg-vernex-navy"><LoadingState label="Loading settings..." /></div>;
+  }
+
   return (
     <div className="flex w-full flex-col">
       <div className="flex flex-1 flex-col gap-4 md:gap-8">
-        <div className="mx-auto grid w-full max-w-6xl items-start gap-6 ">
+        <div className="mx-auto grid w-full max-w-6xl items-start gap-6">
           <div className="grid gap-6">
             <ShopnameCard storeName={storeName} storeId={storeId} />
             <TaxrateCard tax={taxRate} storeId={storeId} />

@@ -101,16 +101,13 @@ const ChartThree: React.FC = () => {
             },
           },
         }));
-      } catch (error: any) {
-        // Set error message if the API call fails
-        setError(error.message);
+      } catch {
+        setError('Unable to load chart data.');
       } finally {
-        // Set loading to false once the API call is complete
         setLoading(false);
       }
     };
 
-    // Call the fetchTopProducts function
     fetchTopProducts();
   }, []);
 

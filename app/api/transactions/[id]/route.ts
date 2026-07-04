@@ -6,12 +6,14 @@ import { formatBillNumber } from '@/lib/bill-number';
 import { authErrorResponse, requireAuth } from '@/lib/auth';
 import { requirePaidFeature } from '@/lib/guards';
 import { writeAuditLog } from '@/lib/audit';
+import { safeOperationMessage } from '@/lib/api-error';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   let ctx;
   try { ctx = await requireAuth(request); } catch (error) { const response = authErrorResponse(error); if (response) return response; throw error; }
   const transaction = await db.transaction.findFirst({
-    where: { id: params.id, businessId: ctx.businessId },
+    where: { id, businessId: ctx.businessId },
     include: {
       products: {
         include: { product: { include: { productstock: true } } },
@@ -25,7 +27,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
   return NextResponse.json({ transaction, items: transaction.products });
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   let ctx;
   try { ctx = await requirePaidFeature(request, 'POS_BILLING'); } catch (error) { const response = authErrorResponse(error); if (response) return response; throw error; }
   const parsed = checkoutSchema.safeParse(await request.json());
@@ -37,7 +40,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const result = await db.$transaction(
       async (tx) => {
         const transaction = await tx.transaction.findFirst({
-          where: { id: params.id, businessId: ctx.businessId },
+          where: { id, businessId: ctx.businessId },
           include: {
             products: { include: { product: { include: { productstock: true } } } },
           },
@@ -90,7 +93,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
               previousStock: line.product.productstock.stock,
               newStock: line.product.productstock.stock - line.quantity,
               referenceType: 'SALE',
-              referenceId: params.id,
+              referenceId: id,
               reason: 'Completed sale',
             },
           });
@@ -127,14 +130,38 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         }
 
         const changeAmount = Math.max(0, amountReceived - grandTotal);
-        const sequence = await tx.billSequence.upsert({
-          where: { id: 'main' },
-          create: { id: 'main', businessId: ctx.businessId, nextNumber: 2 },
-          update: { nextNumber: { increment: 1 } },
-        });
-        const billNumber = formatBillNumber(sequence.nextNumber - 1, shop?.billPrefix, shop?.billPadding);
+        let sequence = await tx.billSequence.findUnique({ where: { id: ctx.businessId } });
+        if (sequence) {
+          sequence = await tx.billSequence.update({
+            where: { id: ctx.businessId },
+            data: { nextNumber: { increment: 1 } },
+          });
+        } else {
+          const latestNumberedSale = await tx.transaction.findFirst({
+            where: { businessId: ctx.businessId, billNumber: { not: null } },
+            orderBy: { completedAt: 'desc' },
+            select: { billNumber: true },
+          });
+          const trailingNumber = latestNumberedSale?.billNumber?.match(/(\d+)$/)?.[1];
+          const nextBillNumber = trailingNumber ? Number(trailingNumber) + 1 : 1;
+          sequence = await tx.billSequence.create({
+            data: {
+              id: ctx.businessId,
+              businessId: ctx.businessId,
+              nextNumber: nextBillNumber + 1,
+            },
+          });
+        }
+        let billNumber = formatBillNumber(sequence.nextNumber - 1, shop?.billPrefix, shop?.billPadding);
+        while (await tx.transaction.findUnique({ where: { billNumber }, select: { id: true } })) {
+          sequence = await tx.billSequence.update({
+            where: { id: ctx.businessId },
+            data: { nextNumber: { increment: 1 } },
+          });
+          billNumber = formatBillNumber(sequence.nextNumber - 1, shop?.billPrefix, shop?.billPadding);
+        }
         const completed = await tx.transaction.update({
-          where: { id: params.id },
+          where: { id },
           data: {
             subtotal,
             businessId: ctx.businessId,
@@ -159,7 +186,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         });
 
         await tx.inventoryMovement.updateMany({
-          where: { referenceId: params.id, movementType: 'SALE' },
+          where: { referenceId: id, movementType: 'SALE' },
           data: { referenceBillNumber: billNumber },
         });
 
@@ -175,7 +202,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     await writeAuditLog(ctx, { action: 'SALE_COMPLETED', entityType: 'Transaction', entityId: result.id, referenceNumber: result.billNumber, description: `Completed sale ${result.billNumber ?? result.id}`, metadata: { totalAmount: Number(result.totalAmount ?? 0), paymentMethod: result.paymentMethod } });
     return NextResponse.json(result);
   } catch (error) {
-    const rawMessage = error instanceof Error ? error.message : 'Checkout failed.';
+    const rawMessage = safeOperationMessage(
+      error,
+      [
+        'Transaction already closed',
+        'Bill not found.',
+        'already been checked out.',
+        'Add at least one product',
+        'Selected customer is unavailable.',
+        'Payment method is not available',
+        'product in this bill no longer exists.',
+        'Insufficient stock',
+        'Amount received',
+      ],
+      'Unable to complete the bill. Please try again.'
+    );
     const message = rawMessage.includes('Transaction already closed')
       ? 'Checkout took too long. Please try Complete Payment again.'
       : rawMessage;
@@ -184,14 +225,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   let ctx;
   try { ctx = await requirePaidFeature(request, 'POS_BILLING'); } catch (error) { const response = authErrorResponse(error); if (response) return response; throw error; }
-  const transaction = await db.transaction.findFirst({ where: { id: params.id, businessId: ctx.businessId } });
+  const transaction = await db.transaction.findFirst({ where: { id, businessId: ctx.businessId } });
   if (!transaction) return NextResponse.json({ error: 'Bill not found.' }, { status: 404 });
   if (transaction.isComplete) {
     return NextResponse.json({ error: 'Completed sales cannot be deleted.' }, { status: 409 });
   }
-  await db.transaction.delete({ where: { id: params.id } });
+  await db.transaction.delete({ where: { id } });
   return NextResponse.json({ success: true });
 }

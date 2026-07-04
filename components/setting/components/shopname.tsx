@@ -56,15 +56,13 @@ const ShopnameCard: React.FC<ShopnameCardProps> = ({ storeName, storeId }) => {
 
       await axios.post('/api/shopdata', validatedData);
 
-      toast.success('Store name updated successfully.');
+      toast.success('Changes saved successfully.');
       eventBus.emit('fetchStoreData');
     } catch (error) {
       if (error instanceof ZodError) {
-        // Handle ZodError
-        const fieldErrors = error.errors.map((err) => err.message);
-        toast.error(`${fieldErrors.join(', ')}`);
+        toast.error('Please enter a valid business name.');
       } else {
-        toast.error('Failed to update store name.');
+        toast.error('Unable to save changes. Please try again.');
       }
     } finally {
       setIsLoading(false);
@@ -72,7 +70,7 @@ const ShopnameCard: React.FC<ShopnameCardProps> = ({ storeName, storeId }) => {
   };
 
   return (
-    <Card className="my-5">
+    <Card>
       <CardHeader>
         <CardTitle>Store Name</CardTitle>
         <CardDescription>Used to identify your store.</CardDescription>
@@ -91,10 +89,10 @@ const ShopnameCard: React.FC<ShopnameCardProps> = ({ storeName, storeId }) => {
           {isLoading ? (
             <>
               <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
-              Please wait
+              Saving...
             </>
           ) : (
-            'Save'
+            'Save Changes'
           )}
         </Button>
       </CardFooter>

@@ -1,6 +1,6 @@
 'use client';
 import {
-  Pagination,
+  Pagination as PaginationRoot,
   PaginationContent,
   PaginationItem,
   PaginationLink,
@@ -12,7 +12,7 @@ import {
 import { usePathname, useSearchParams } from 'next/navigation';
 import { generatePagination } from '@/lib/utils';
 
-export function PaginationDemo({ totalPages }: { totalPages: number }) {
+export function Pagination({ totalPages }: { totalPages: number }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentPage = Number(searchParams.get('page')) || 1;
@@ -29,7 +29,7 @@ export function PaginationDemo({ totalPages }: { totalPages: number }) {
   const allPages = generatePagination(currentPage, pageCount);
 
   return (
-    <Pagination>
+    <PaginationRoot>
       <PaginationContent>
         <PaginationItem hidden={currentPage === 1}>
           <PaginationPrevious
@@ -60,6 +60,6 @@ export function PaginationDemo({ totalPages }: { totalPages: number }) {
           />
         </PaginationItem>
       </PaginationContent>
-    </Pagination>
+    </PaginationRoot>
   );
 }

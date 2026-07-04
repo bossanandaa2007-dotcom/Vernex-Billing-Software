@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ReceiptItem, ReceiptSale, ReceiptShop } from '@/lib/receipt';
 import axios from 'axios';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { ReturnPanel } from '@/components/returns/ReturnPanel';
 
-export default function DetailPage({ params }: { params: { id: string } }) {
+export default function DetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const [sale, setSale] = useState<ReceiptSale | null>(null);
   const [items, setItems] = useState<ReceiptItem[]>([]);
   const [shop, setShop] = useState<ReceiptShop>({});
@@ -18,10 +19,10 @@ export default function DetailPage({ params }: { params: { id: string } }) {
   const receiptRef = useRef<HTMLDivElement>(null);
   const autoPrinted = useRef(false);
   const searchParams = useSearchParams();
-  const print = useReactToPrint({ content: () => receiptRef.current, documentTitle: sale?.billNumber ?? params.id });
+  const print = useReactToPrint({ content: () => receiptRef.current, documentTitle: sale?.billNumber ?? id });
 
   const load = () => {
-    Promise.all([axios.get(`/api/transactions/${params.id}`), axios.get('/api/shopdata')])
+    Promise.all([axios.get(`/api/transactions/${id}`), axios.get('/api/shopdata')])
       .then(([saleResponse, shopResponse]) => {
         setSale(saleResponse.data.transaction);
         setItems(saleResponse.data.items);
@@ -35,7 +36,7 @@ export default function DetailPage({ params }: { params: { id: string } }) {
     load();
     // load is scoped to this transaction route.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
+  }, [id]);
 
   useEffect(() => {
     if (sale && searchParams.get('print') === '1' && !autoPrinted.current) {

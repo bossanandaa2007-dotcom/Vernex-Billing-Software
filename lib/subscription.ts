@@ -57,8 +57,7 @@ export async function canUsePaidFeatures(businessId: string) {
 export async function requireActiveSubscription(ctx: CurrentUserContext) {
   const subscription = await getBusinessSubscriptionStatus(ctx.businessId);
   if (!subscription.canUsePaidFeatures) {
-    throw new AuthError('Your free trial has expired. Contact Vernex to activate your account.', 402);
+    throw new AuthError('Your trial has expired. Contact Vernex to activate your license.', 402);
   }
   return subscription;
 }
-

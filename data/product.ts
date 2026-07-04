@@ -14,14 +14,13 @@ export const fetchProduct = async ({
   take: number;
   skip: number;
 }) => {
-  const isOnlineResult = await isOnline();
+  'use server';
 
-  if (!isOnlineResult) {
-    throw new Error('No internet connection');
-    return;
-  }
+  try {
+    const isOnlineResult = await isOnline();
 
-  ('use server');
+    if (!isOnlineResult) return null;
+
   const ctx = await getCurrentUserContext();
   const selectedCategory = Object.values(CatProduct).includes(category as CatProduct) ? category as CatProduct : undefined;
   const productWhere = {
@@ -75,7 +74,7 @@ export const fetchProduct = async ({
     }),
   ]);
 
-  return {
+    return {
       data: results,
       categories: categoryRows.map((item) => item.cat),
       currency: shop?.currency ?? 'INR',
@@ -84,4 +83,7 @@ export const fetchProduct = async ({
         totalPages: Math.ceil(total / take),
       },
     };
+  } catch {
+    return null;
+  }
 };

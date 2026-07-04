@@ -49,19 +49,13 @@ export function DeleteAlertDialog({
     }
 
     try {
-      const response = await axios.delete(
+      await axios.delete(
         `/api/product/${data.productstock.id}`
       );
       onClose();
       router.refresh();
-    } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        console.error('Server Error:', error.response?.data);
-      } else if (error instanceof Error) {
-        console.error('Error:', error.message);
-      } else {
-        console.error('Unknown error:', error);
-      }
+    } catch {
+      toast.error('Unable to delete this product.');
     } finally {
       setLoading(false);
     }

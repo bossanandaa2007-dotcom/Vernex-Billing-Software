@@ -38,7 +38,7 @@ export function fakeProductStock() {
 export function fakeProductStockComplete() {
   return {
     id: faker.string.uuid(),
-    businessId: undefined,
+    businessId: faker.string.uuid(),
     name: faker.person.fullName(),
     imageProduct: undefined,
     price: faker.number.float(),
@@ -95,7 +95,7 @@ export function fakeTransaction() {
 export function fakeTransactionComplete() {
   return {
     id: faker.string.uuid(),
-    businessId: undefined,
+    businessId: faker.string.uuid(),
     billNumber: undefined,
     customerName: undefined,
     customerPhone: undefined,
@@ -133,7 +133,7 @@ export function fakeCustomer() {
 export function fakeCustomerComplete() {
   return {
     id: faker.string.uuid(),
-    businessId: undefined,
+    businessId: faker.string.uuid(),
     name: faker.person.fullName(),
     phone: faker.lorem.words(5),
     email: undefined,
@@ -162,7 +162,7 @@ export function fakeInventoryMovement() {
 export function fakeInventoryMovementComplete() {
   return {
     id: faker.string.uuid(),
-    businessId: undefined,
+    businessId: faker.string.uuid(),
     productId: undefined,
     productNameSnapshot: faker.lorem.words(5),
     movementType: faker.helpers.arrayElement([InventoryMovementType.SALE, InventoryMovementType.RESTOCK, InventoryMovementType.RETURN, InventoryMovementType.ADJUSTMENT] as const),
@@ -188,7 +188,7 @@ export function fakeSaleReturn() {
 export function fakeSaleReturnComplete() {
   return {
     id: faker.string.uuid(),
-    businessId: undefined,
+    businessId: faker.string.uuid(),
     originalTransactionId: faker.string.uuid(),
     originalBillNumber: faker.lorem.words(5),
     refundAmount: new Decimal(faker.number.float()),
@@ -229,9 +229,9 @@ export function fakeShopData() {
 export function fakeShopDataComplete() {
   return {
     id: faker.string.uuid(),
-    businessId: undefined,
+    businessId: faker.string.uuid(),
     tax: 0,
-    name: 'Vernex Demo Shop',
+    name: 'Vernex',
     country: 'India',
     currency: 'INR',
     taxMode: TaxMode.GST,
@@ -252,7 +252,7 @@ export function fakeShopDataComplete() {
 export function fakeBillSequenceComplete() {
   return {
     id: faker.string.uuid(),
-    businessId: undefined,
+    businessId: faker.string.uuid(),
     nextNumber: 1,
   };
 }
