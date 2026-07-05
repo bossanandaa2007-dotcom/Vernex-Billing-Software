@@ -30,7 +30,7 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Primary mobile navigation"
-      className="fixed inset-x-0 bottom-0 z-40 grid h-[72px] grid-cols-5 border-t border-vernex-border bg-white px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden dark:border-[#1E335F] dark:bg-vernex-navy"
+      className="fixed inset-x-0 bottom-0 z-40 flex h-[72px] items-stretch border-t border-vernex-border bg-white px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden dark:border-[#1E335F] dark:bg-vernex-navy"
     >
       {items.map((item) => {
         const active = pathname === item.path;
@@ -38,18 +38,17 @@ export function MobileBottomNav() {
           <Link
             key={item.path}
             href={item.path}
+            aria-label={item.title}
             aria-current={active ? 'page' : undefined}
+            title={item.title}
             className={cn(
-              'flex min-w-0 flex-col items-center justify-center gap-1 rounded-md px-1 text-[10px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vernex-gold',
+              'relative flex min-h-11 min-w-11 flex-1 items-center justify-center text-vernex-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-vernex-gold dark:text-slate-300',
               active
-                ? 'bg-vernex-navy text-white dark:bg-vernex-gold dark:text-vernex-dark'
-                : 'text-vernex-muted hover:bg-vernex-surface dark:text-slate-300 dark:hover:bg-white/10'
+                ? 'text-vernex-navy before:absolute before:inset-x-3 before:top-0 before:h-0.5 before:rounded-full before:bg-vernex-gold dark:text-vernex-gold'
+                : 'hover:text-vernex-navy dark:hover:text-white'
             )}
           >
-            <span className="[&>svg]:h-5 [&>svg]:w-5">{item.icon}</span>
-            <span className="w-full truncate text-center">
-              {item.path === '/settings' ? 'Business' : item.title}
-            </span>
+            <span aria-hidden="true" className="[&>svg]:h-5 [&>svg]:w-5">{item.icon}</span>
           </Link>
         );
       })}
