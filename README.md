@@ -1,38 +1,77 @@
 # Vernex
 
-Vernex is a production billing and business operations application for sales,
-products, inventory, customers, staff, receipts, returns, and reporting.
+Production monorepo for the Vernex POS and Super Admin applications.
 
-## Local Setup
+## Structure
 
-1. Copy `.env.example` to `.env` and provide valid database and authentication values.
-2. Install dependencies with `npm install`.
-3. Generate the database client with `npx prisma generate`.
-4. Start the application with `npm run dev`.
+```text
+apps/
+  pos/        Full-stack Next.js POS
+  admin/      Independent Next.js Super Admin Portal
+packages/
+  ui/
+  supabase/
+  types/
+  utils/
+  validation/
+  config/
+docs/
+scripts/
+```
 
-The application is available at `http://localhost:3000`.
+The POS remains full-stack. Its API routes, middleware, Prisma schema, authentication, server actions, and UI stay together to preserve same-origin behavior.
+
+Shared package folders are intentionally empty until an implementation is genuinely identical in both applications. POS and Admin currently use different React, Tailwind, Zod, Supabase, and UI dependency versions.
+
+## Installation
+
+### npm
+
+```powershell
+npm install
+npm run install:apps
+```
+
+### pnpm
+
+```powershell
+corepack pnpm install
+```
+
+## Environment
+
+Keep secrets local to each application:
+
+- `apps/pos/.env` or `apps/pos/.env.local`
+- `apps/admin/.env` or `apps/admin/.env.local`
+
+Use each app's `.env.example` as the variable reference. Variable names and database connections were not changed.
+
+## Development
+
+```powershell
+npm run dev:pos
+npm run dev:admin
+```
+
+- POS: `http://localhost:3000`
+- Admin: `http://localhost:3100`
 
 ## Validation
 
 ```powershell
-npx tsc --noEmit
+npm run typecheck
 npm run lint
 npm run build
-npm audit
 ```
 
-Never commit local environment files or production credentials.
+## Vercel
 
-## SaaS Integration
+Create two projects from this repository:
 
-The customer POS and sibling `vernex-super-admin-portal` remain separate Next.js applications connected to the same Supabase project.
+- POS Root Directory: `apps/pos`
+- Admin Root Directory: `apps/admin`
 
-- Supabase Auth identifies each POS user.
-- `StaffProfile.authUserId` resolves the user to one required `businessId`.
-- Every tenant-owned table requires `businessId`.
-- POS APIs scope reads and writes to the authenticated business.
-- Supabase RLS exposes tenant reads only for the current business.
-- One Auth user carries the `vernex_super_admin` application claim for portal-wide access.
-- Privileged Auth provisioning and password reset/deletion stay server-only in the portal.
+Each app retains its original Next.js configuration and can be deployed independently.
 
-Run `node scripts/verify-master-integration.mjs` against a development server on port 3001 to verify cross-tenant isolation.
+See [docs/architecture.md](docs/architecture.md) and [docs/vercel.md](docs/vercel.md).
