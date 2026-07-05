@@ -8,6 +8,8 @@ import { useEffect, useState } from 'react';
 import { getAuthContext } from '@/lib/client-data';
 import { LogoutButton } from '@/components/auth/LogoutButton';
 
+const bottomNavigationPaths = new Set(['/home', '/orders', '/product', '/records', '/settings']);
+
 export function NavbarSheet({ storeName }: { storeName: string }) {
   const pathname = usePathname();
   const [role, setRole] = useState<string | null>(null);
@@ -18,7 +20,11 @@ export function NavbarSheet({ storeName }: { storeName: string }) {
       .catch(() => setRole(null));
   }, []);
   const items = role
-    ? NAVBAR_ITEMS.filter((item) => !item.roles || item.roles.includes(role as any))
+    ? NAVBAR_ITEMS.filter(
+        (item) =>
+          !bottomNavigationPaths.has(item.path) &&
+          (!item.roles || item.roles.includes(role as any))
+      )
     : [];
 
   return (

@@ -298,6 +298,7 @@ export function fakeStaffProfileComplete() {
   return {
     id: faker.string.uuid(),
     authUserId: faker.lorem.words(5),
+    userId: '[object Object]',
     businessId: faker.string.uuid(),
     name: faker.person.fullName(),
     email: faker.internet.email(),

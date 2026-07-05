@@ -88,7 +88,7 @@ export default async function TableProduct(props: PageProps) {
           <Link
             href={categoryHref()}
             className={cn(
-              'flex h-10 items-center rounded-xl border px-3 text-sm font-semibold transition dark:border-[#1E335F] dark:bg-vernex-dark',
+              'flex h-10 items-center rounded-xl border px-3 text-sm font-medium transition dark:border-[#1E335F] dark:bg-vernex-dark',
               category
                 ? 'border-vernex-border bg-white text-vernex-muted hover:border-vernex-gold hover:bg-vernex-gold/10'
                 : 'border-vernex-navy bg-vernex-navy text-white dark:border-vernex-gold dark:bg-vernex-gold dark:text-vernex-dark'
@@ -98,9 +98,9 @@ export default async function TableProduct(props: PageProps) {
             {categoryLabel}
           </Link>
           <div className="flex h-10 cursor-not-allowed items-center rounded-xl border border-vernex-border bg-white px-3 text-sm text-vernex-muted opacity-60 dark:border-[#1E335F] dark:bg-vernex-dark" title="Brand data is not configured for products yet.">
-            All Brands
+            All Products
           </div>
-          <div className="flex h-10 items-center justify-center rounded-xl border border-vernex-border bg-white px-3 text-sm font-semibold text-vernex-navy dark:border-[#1E335F] dark:bg-vernex-dark dark:text-white">
+          <div className="flex h-10 items-center justify-center rounded-xl border border-vernex-border bg-white px-3 text-sm font-medium text-vernex-navy dark:border-[#1E335F] dark:bg-vernex-dark dark:text-white">
             <Barcode className="mr-2 h-4 w-4 text-emerald-600" />
             Scan Barcode
           </div>
@@ -134,34 +134,34 @@ export default async function TableProduct(props: PageProps) {
           </div>
         )}
       </CardHeader>
-      <CardContent className="min-h-[520px] p-4">
+      <CardContent className="min-h-[520px] p-3 md:p-4">
         {data.length ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid gap-3 md:gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {data.map((item) => {
               return (
                 <article
                   key={item.id}
-                  className="group relative min-h-[190px] rounded-2xl border border-vernex-border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-md dark:border-[#1E335F] dark:bg-vernex-dark"
+                  className="group relative min-h-[148px] rounded-2xl border border-vernex-border bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-md md:min-h-[190px] md:p-4 dark:border-[#1E335F] dark:bg-vernex-dark"
                 >
                   <div className="absolute right-3 top-3 z-10">
                     <Dropdown product={item} />
                   </div>
-                  <div className="flex gap-4 pr-8">
-                    <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-vernex-surface dark:bg-vernex-navy">
+                  <div className="flex gap-3 pr-8 md:gap-4">
+                    <div className="relative grid h-[72px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-xl bg-vernex-surface md:h-24 md:w-24 dark:bg-vernex-navy">
                       {item.productstock.imageProduct ? (
                         <Image src={item.productstock.imageProduct} alt={item.productstock.name} fill className="object-cover" sizes="96px" />
                       ) : (
-                        <ShoppingBag className="absolute left-8 top-8 h-8 w-8 text-emerald-600" />
+                        <ShoppingBag className="h-7 w-7 text-emerald-600 md:h-8 md:w-8" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="line-clamp-2 font-bold text-vernex-text dark:text-white">
+                      <h3 className="line-clamp-2 font-semibold text-vernex-text dark:text-white">
                         {item.productstock.name}
                       </h3>
-                      <p className="mt-1 text-xs text-vernex-muted dark:text-slate-400">
+                      <p className="mt-1 hidden text-xs text-vernex-muted md:block dark:text-slate-400">
                         SKU: {item.productstock.id}
                       </p>
-                      <p className="mt-3 font-black text-vernex-navy dark:text-vernex-gold">
+                      <p className="mt-2 font-bold text-vernex-navy md:mt-3 dark:text-vernex-gold">
                         {formatMoney(item.sellprice, currency)}
                       </p>
                       <p className="mt-1 text-xs text-vernex-muted dark:text-slate-400">
@@ -169,7 +169,7 @@ export default async function TableProduct(props: PageProps) {
                       </p>
                     </div>
                   </div>
-                  <div className="mt-4 flex items-center justify-between gap-3">
+                  <div className="mt-2 flex items-center justify-between gap-3 md:mt-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline" className="rounded-full">
                         {item.productstock.cat}

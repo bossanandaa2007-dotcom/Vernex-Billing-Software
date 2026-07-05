@@ -51,7 +51,6 @@ export function Dashboard() {
   const [error, setError] = useState('');
   const [view, setView] = useState<ViewMode>('overview');
   const [period, setPeriod] = useState<DashboardPeriod>('today');
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const activePeriod = periodOptions.find((item) => item.value === period) ?? periodOptions[0];
 
   const load = useCallback(async () => {
@@ -60,7 +59,6 @@ export function Dashboard() {
     try {
       const nextData = await getTotal(period);
       setData(nextData);
-      setUpdatedAt(new Date());
     } catch {
       setError('Unable to refresh dashboard right now.');
       setData(empty);
@@ -97,10 +95,12 @@ export function Dashboard() {
               <Sparkles className="h-4 w-4" />
               Live workspace
             </div>
-            <h2 className="mt-1 text-xl font-black text-vernex-navy sm:text-2xl dark:text-white">{activePeriod.title}</h2>
-            <p className="mt-1 text-sm text-vernex-muted dark:text-slate-300">
-              {updatedAt ? `Last refreshed at ${updatedAt.toLocaleTimeString()}` : `Loading ${activePeriod.label.toLowerCase()} performance...`}
-            </p>
+            <h2 className="mt-1 text-xl font-bold leading-tight text-vernex-navy sm:text-2xl dark:text-white">{activePeriod.title}</h2>
+            {loading && (
+              <p className="mt-1 text-sm font-normal leading-5 text-vernex-muted dark:text-slate-300">
+                Loading {activePeriod.label.toLowerCase()} performance...
+              </p>
+            )}
           </div>
           <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
             <div className="grid w-full grid-cols-3 rounded-lg border border-vernex-border bg-vernex-surface p-1 sm:flex sm:w-auto dark:border-[#1E335F] dark:bg-vernex-dark">
@@ -110,7 +110,7 @@ export function Dashboard() {
                   type="button"
                   onClick={() => setPeriod(item.value)}
                   className={cn(
-                    'h-10 rounded-md px-2 text-sm font-semibold transition sm:h-8 sm:px-3',
+                    'h-10 rounded-md px-2 text-sm font-medium transition sm:h-8 sm:px-3',
                     period === item.value
                       ? 'bg-vernex-navy text-white shadow-sm dark:bg-vernex-gold dark:text-vernex-dark'
                       : 'text-vernex-navy hover:bg-white dark:text-white dark:hover:bg-white/10'
@@ -137,10 +137,10 @@ export function Dashboard() {
         {kpis.map((item) => (
           <div key={item.label} className="rounded-xl border border-vernex-border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-md dark:border-[#1E335F] dark:bg-vernex-navy">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-semibold uppercase text-vernex-muted dark:text-slate-400">{item.label}</p>
+              <p className="text-xs font-medium uppercase leading-5 text-vernex-muted dark:text-slate-400">{item.label}</p>
               <item.icon className="h-5 w-5 text-emerald-600 dark:text-vernex-gold" />
             </div>
-            <p className="mt-3 text-2xl font-black text-vernex-navy dark:text-white">{loading ? <Loader2 className="h-6 w-6 animate-spin" /> : item.value}</p>
+            <p className="mt-3 text-2xl font-bold leading-tight text-vernex-navy dark:text-white">{loading ? <Loader2 className="h-6 w-6 animate-spin" /> : item.value}</p>
             <p className="mt-1 text-sm text-vernex-muted dark:text-slate-400">{item.detail}</p>
           </div>
         ))}
@@ -151,7 +151,7 @@ export function Dashboard() {
           <div className="rounded-xl border border-vernex-border bg-white p-5 shadow-sm dark:border-[#1E335F] dark:bg-vernex-navy">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="text-lg font-bold text-vernex-navy dark:text-white">Sales Flow</h3>
+                <h3 className="text-lg font-semibold text-vernex-navy dark:text-white">Sales Flow</h3>
                 <p className="text-sm text-vernex-muted dark:text-slate-300">A quick read on money, bills, and returns for {activePeriod.shortLabel.toLowerCase()}.</p>
               </div>
               <Button asChild variant="outline" size="sm" className="min-h-11 w-full sm:min-h-9 sm:w-auto">
@@ -166,7 +166,7 @@ export function Dashboard() {
           </div>
 
           <div className="rounded-xl border border-vernex-border bg-white p-5 shadow-sm dark:border-[#1E335F] dark:bg-vernex-navy">
-            <h3 className="text-lg font-bold text-vernex-navy dark:text-white">Quick Actions</h3>
+            <h3 className="text-lg font-semibold text-vernex-navy dark:text-white">Quick Actions</h3>
             <div className="mt-4 grid gap-2">
               <QuickLink href="/orders" icon={ShoppingCart} label="Start Billing" />
               <QuickLink href="/records" icon={ReceiptText} label="Review Sales" />
@@ -180,7 +180,7 @@ export function Dashboard() {
         <div className="rounded-xl border border-vernex-border bg-white p-5 shadow-sm dark:border-[#1E335F] dark:bg-vernex-navy">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h3 className="text-lg font-bold text-vernex-navy dark:text-white">Payment Mix</h3>
+              <h3 className="text-lg font-semibold text-vernex-navy dark:text-white">Payment Mix</h3>
               <p className="text-sm text-vernex-muted dark:text-slate-300">Compare {activePeriod.shortLabel.toLowerCase()} payment channels at a glance.</p>
             </div>
             <p className="text-sm font-semibold text-vernex-navy dark:text-white">{formatMoney(data.todayRevenue, data.currency)} collected</p>
@@ -223,8 +223,8 @@ export function Dashboard() {
 function MetricPanel({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-vernex-border bg-vernex-surface p-4 dark:border-[#1E335F] dark:bg-vernex-dark">
-      <p className="text-xs font-semibold uppercase text-vernex-muted dark:text-slate-400">{label}</p>
-      <p className="mt-2 break-words text-lg font-black text-vernex-navy dark:text-white">{value}</p>
+      <p className="text-xs font-medium uppercase leading-5 text-vernex-muted dark:text-slate-400">{label}</p>
+      <p className="mt-2 break-words text-lg font-bold leading-tight text-vernex-navy dark:text-white">{value}</p>
     </div>
   );
 }
@@ -248,7 +248,7 @@ function AttentionCard({ icon: Icon, title, value, tone }: { icon: React.Element
           <Icon className="h-5 w-5" />
         </div>
         <div>
-          <p className="font-bold text-vernex-navy dark:text-white">{title}</p>
+          <p className="font-semibold text-vernex-navy dark:text-white">{title}</p>
           <p className="text-sm text-vernex-muted dark:text-slate-300">{value}</p>
         </div>
       </div>

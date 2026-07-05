@@ -401,13 +401,13 @@ export function PosBilling() {
               </Select>
               <Select value={brand} onValueChange={setBrand}>
                 <SelectTrigger className="rounded-xl"><SelectValue placeholder="Brand" /></SelectTrigger>
-                <SelectContent>{brands.map((item) => <SelectItem key={item} value={item}>{item === ALL ? 'All brands' : item}</SelectItem>)}</SelectContent>
+                <SelectContent>{brands.map((item) => <SelectItem key={item} value={item}>{item === ALL ? 'All Products' : item}</SelectItem>)}</SelectContent>
               </Select>
             </div>
           </CardHeader>
-          <CardContent className="min-h-[520px] overflow-auto p-4">
+          <CardContent className="min-h-[520px] overflow-auto p-3 md:p-4">
             {loadingProducts ? <ProductSkeleton /> : filteredProducts.length ? (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              <div className="grid gap-3 md:gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {filteredProducts.map((product) => {
               const price = product.Product[0]?.sellprice ?? 0;
               const out = product.stock <= 0;
@@ -418,27 +418,27 @@ export function PosBilling() {
                   type="button"
                   disabled={out || mutating}
                   onClick={() => addProduct(product.id)}
-                  className="group relative min-h-[170px] rounded-2xl border border-vernex-border bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 dark:border-[#1E335F] dark:bg-vernex-navy"
+                  className="group relative min-h-[132px] rounded-2xl border border-vernex-border bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 md:min-h-[170px] md:p-4 dark:border-[#1E335F] dark:bg-vernex-navy"
                 >
-                  <div className="flex gap-4">
-                    <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-vernex-surface dark:bg-vernex-dark">
+                  <div className="flex gap-3 md:gap-4">
+                    <div className="relative grid h-[72px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-xl bg-vernex-surface md:h-24 md:w-24 dark:bg-vernex-dark">
                       {product.imageProduct ? (
                         <Image src={product.imageProduct} alt={product.name} fill className="object-cover" sizes="96px" />
                       ) : (
-                        <ShoppingBag className="absolute left-8 top-8 h-8 w-8 text-emerald-600" />
+                        <ShoppingBag className="h-7 w-7 text-emerald-600 md:h-8 md:w-8" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="line-clamp-2 font-bold text-vernex-text dark:text-white">{product.name}</div>
-                      <div className="mt-1 text-xs text-vernex-muted dark:text-slate-400">SKU: {product.id}</div>
-                      <div className="mt-3 font-black text-vernex-navy dark:text-vernex-gold">{formatMoney(price, currency)}</div>
+                      <div className="mt-1 hidden text-xs text-vernex-muted md:block dark:text-slate-400">SKU: {product.id}</div>
+                      <div className="mt-2 font-black text-vernex-navy md:mt-3 dark:text-vernex-gold">{formatMoney(price, currency)}</div>
                     </div>
                   </div>
-                  <div className="mt-4 flex items-center justify-between gap-3">
+                  <div className="mt-2 flex items-center justify-between gap-3 md:mt-4">
                       <Badge variant={out ? 'destructive' : low ? 'secondary' : 'outline'} className="rounded-full">
                         {out ? 'Out of stock' : low ? 'Low stock' : product.cat}
                       </Badge>
-                    <span className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-600 text-white shadow-sm transition group-hover:bg-emerald-700">
+                    <span className="grid h-11 w-11 place-items-center rounded-lg bg-emerald-600 text-white shadow-sm transition group-hover:bg-emerald-700 md:h-9 md:w-9">
                       <Plus className="h-5 w-5" />
                     </span>
                   </div>

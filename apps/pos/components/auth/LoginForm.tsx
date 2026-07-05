@@ -6,14 +6,16 @@ import { Input } from '@/components/ui/input';
 import { getBrowserSupabase } from '@/lib/supabase';
 import Image from 'next/image';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Loader2, LockKeyhole, Mail } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Loader2, LockKeyhole, Mail } from 'lucide-react';
 
 type LoginMode = 'sign-in' | 'create-account' | 'forgot-password' | 'new-password';
 
 export function LoginForm() {
   const [mode, setMode] = useState<LoginMode>('sign-in');
+  const [userId, setUserId] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'error' | 'success'>('error');
@@ -49,8 +51,12 @@ export function LoginForm() {
 
   const login = async (event: FormEvent) => {
     event.preventDefault();
-    if (!email.trim() || !password) {
-      setMessage('Please enter your email and password.');
+    if (!userId.trim()) {
+      setMessage('User ID is required.');
+      return;
+    }
+    if (!password) {
+      setMessage('Password is required.');
       return;
     }
     setLoading(true);
@@ -60,11 +66,11 @@ export function LoginForm() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ userId: userId.trim(), password }),
       });
       if (!response.ok) {
         const result = await response.json().catch(() => null);
-        setMessage(result?.error || 'The email or password is incorrect.');
+        setMessage(result?.error || 'Invalid User ID or password.');
         return;
       }
       window.location.href = new URLSearchParams(window.location.search).get('next') || '/home';
@@ -207,7 +213,7 @@ export function LoginForm() {
         ? 'Choose a secure password for your Vernex account.'
         : mode === 'create-account'
           ? 'Set up the first secure login for this Vernex workspace.'
-        : 'Enter your staff account details to continue.';
+        : '';
 
   return (
     <div className="w-full max-w-md rounded-2xl border border-vernex-border bg-white p-8 shadow-xl dark:border-[#1E335F] dark:bg-vernex-navy">
@@ -215,29 +221,29 @@ export function LoginForm() {
         <Image src="/assets/vernex-logo.png" alt="Vernex" width={72} height={72} className="mb-4 h-16 w-16 object-contain" priority />
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-vernex-gold">Vernex</p>
         <h1 className="mt-2 text-2xl font-bold text-vernex-navy dark:text-white">{title}</h1>
-        <p className="mt-2 text-sm text-vernex-muted dark:text-slate-300">{description}</p>
+        {description && <p className="mt-2 text-sm text-vernex-muted dark:text-slate-300">{description}</p>}
       </div>
       {mode === 'sign-in' && (
         <form className="space-y-4" onSubmit={login}>
           <div className="space-y-2">
-            <Label htmlFor="login-email">Email</Label>
-            <Input id="login-email" placeholder="you@business.com" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" disabled={loading} autoFocus />
+            <Label htmlFor="login-user-id">User ID</Label>
+            <Input id="login-user-id" placeholder="Enter your User ID" type="text" value={userId} onChange={(e) => setUserId(e.target.value)} autoComplete="username" disabled={loading} autoFocus />
           </div>
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-4">
-              <Label htmlFor="login-password">Password</Label>
+            <Label htmlFor="login-password">Password</Label>
+            <div className="relative">
+              <Input id="login-password" className="pr-11" placeholder="Enter your password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" disabled={loading} />
               <button
                 type="button"
-                className="text-sm font-semibold text-vernex-navy underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vernex-gold dark:text-vernex-gold"
-                onClick={() => {
-                  setMode('forgot-password');
-                  setMessage('');
-                }}
+                className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-vernex-muted transition hover:bg-vernex-surface hover:text-vernex-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vernex-gold dark:hover:bg-vernex-dark dark:hover:text-white"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+                disabled={loading}
               >
-                Forgot password?
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <Input id="login-password" placeholder="Enter your password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" disabled={loading} />
           </div>
           <Button className="h-11 w-full bg-vernex-navy text-white hover:bg-vernex-dark" type="submit" disabled={loading}>
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LockKeyhole className="mr-2 h-4 w-4" />}
