@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { Cross2Icon, ReloadIcon } from '@radix-ui/react-icons';
 import { useEffect, useState } from 'react';
-import { CatProduct } from '@prisma/client';
+import { CatProduct } from '@/src/types/domain';
 import { productSchema } from '@/schema';
 import { z } from 'zod';
 import axios from 'axios';

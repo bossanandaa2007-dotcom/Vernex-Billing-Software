@@ -1,6 +1,6 @@
 import * as z from 'zod';
 
-import { CatProduct } from '@prisma/client';
+import { CatProduct } from '@/src/types/domain';
 
 const categoryValidator = (val: string): val is CatProduct =>
   Object.values(CatProduct).includes(val as CatProduct);

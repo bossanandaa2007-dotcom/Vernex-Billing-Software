@@ -16,9 +16,6 @@ COPY . .
 # Copy .env file
 COPY .env .env
 
-# Generate Prisma
-RUN npx prisma generate
-
 # Build the application
 RUN npm run build
 

@@ -1,0 +1,2 @@
+-- Production data is intentionally excluded.
+-- Add local development fixtures only after the captured schema migration is available.

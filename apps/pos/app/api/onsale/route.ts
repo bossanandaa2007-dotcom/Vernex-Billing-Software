@@ -1,8 +1,8 @@
-import { db } from '@/lib/db';
 import { onsaleSchema } from '@/schema';
 import { NextResponse } from 'next/server';
 import { authErrorResponse } from '@/lib/auth';
 import { requirePaidFeature } from '@/lib/guards';
+import { createServerClient } from '@/src/lib/supabase/server';
 
 export async function POST(request: Request) {
   let ctx;
@@ -14,11 +14,15 @@ export async function POST(request: Request) {
 
   const { productId, transactionId, qTy } = parsed.data;
   try {
-    const [transaction, product, existing] = await Promise.all([
-      db.transaction.findFirst({ where: { id: transactionId, businessId: ctx.businessId } }),
-      db.product.findFirst({ where: { productId, productstock: { businessId: ctx.businessId } }, include: { productstock: true } }),
-      db.onSaleProduct.findFirst({ where: { productId, transactionId } }),
+    const supabase = await createServerClient(request);
+    const [transactionResult, productResult, existingResult] = await Promise.all([
+      supabase.from('Transaction').select('*').eq('id', transactionId).eq('businessId', ctx.businessId).maybeSingle(),
+      supabase.from('Product').select('*, productstock:ProductStock!inner(*)').eq('productId', productId).eq('productstock.businessId', ctx.businessId).maybeSingle(),
+      supabase.from('OnSaleProduct').select('*').eq('productId', productId).eq('transactionId', transactionId).maybeSingle(),
     ]);
+    const transaction = transactionResult.data;
+    const product = productResult.data;
+    const existing = existingResult.data;
 
     if (!transaction || transaction.isComplete) {
       return NextResponse.json({ error: 'Bill is missing or already completed.' }, { status: 409 });
@@ -36,25 +40,18 @@ export async function POST(request: Request) {
     }
 
     const line = existing
-      ? await db.onSaleProduct.update({
-          where: { id: existing.id },
-          data: { quantity: nextQuantity },
-        })
-      : await db.onSaleProduct.create({
-          data: {
+      ? (await supabase.from('OnSaleProduct').update({ quantity: nextQuantity }).eq('id', existing.id).select('*').single()).data
+      : (await supabase.from('OnSaleProduct').insert({
             transactionId,
             productId,
             quantity: qTy,
             productName: product.productstock.name,
             unitPrice: product.sellprice,
             costPrice: product.productstock.price,
-          },
-        });
+          }).select('*').single()).data;
 
     return NextResponse.json(line, { status: 201 });
   } catch (error) {
-    console.error('Add cart line failed:', error);
     return NextResponse.json({ error: 'Unable to add product to bill.' }, { status: 500 });
   }
 }
-

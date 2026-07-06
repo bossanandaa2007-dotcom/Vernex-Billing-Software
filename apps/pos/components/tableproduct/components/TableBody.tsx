@@ -2,7 +2,7 @@
 import { TableBody, TableCell, TableRow } from '@/components/ui/table';
 import Dropdown from './btn/Dropdown';
 import { Badge } from '@/components/ui/badge';
-import { CatProduct } from '@prisma/client';
+import { CatProduct } from '@/src/types/domain';
 import SkeletonRow from '@/components/skeleton/products';
 import { useState, useEffect } from 'react';
 import { formatMoney } from '@/lib/currency';

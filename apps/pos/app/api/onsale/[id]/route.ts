@@ -1,8 +1,8 @@
-import { db } from '@/lib/db';
 import { orderSchema } from '@/schema';
 import { NextResponse } from 'next/server';
 import { authErrorResponse } from '@/lib/auth';
 import { requirePaidFeature } from '@/lib/guards';
+import { createServerClient } from '@/src/lib/supabase/server';
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -13,10 +13,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const line = await db.onSaleProduct.findUnique({
-    where: { id },
-    include: { transaction: true, product: { include: { productstock: true } } },
-  });
+  const supabase = await createServerClient(request);
+  const { data: line } = await supabase.from('OnSaleProduct')
+    .select('*, transaction:Transaction(*), product:Product(*, productstock:ProductStock(*))')
+    .eq('id', id).maybeSingle();
   if (!line || !line.product || line.transaction.businessId !== ctx.businessId) return NextResponse.json({ error: 'Cart line not found.' }, { status: 404 });
   if (line.transaction.isComplete) return NextResponse.json({ error: 'Completed bills cannot be changed.' }, { status: 409 });
   if (parsed.data.qTy > line.product.productstock.stock) {
@@ -24,7 +24,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   return NextResponse.json(
-    await db.onSaleProduct.update({ where: { id }, data: { quantity: parsed.data.qTy } })
+    (await supabase.from('OnSaleProduct').update({ quantity: parsed.data.qTy }).eq('id', id).select('*').single()).data
   );
 }
 
@@ -32,9 +32,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const { id } = await params;
   let ctx;
   try { ctx = await requirePaidFeature(request, 'POS_BILLING'); } catch (error) { const response = authErrorResponse(error); if (response) return response; throw error; }
-  const line = await db.onSaleProduct.findUnique({ where: { id }, include: { transaction: true } });
+  const supabase = await createServerClient(request);
+  const { data: line } = await supabase.from('OnSaleProduct').select('*, transaction:Transaction(*)').eq('id', id).maybeSingle();
   if (!line || line.transaction.businessId !== ctx.businessId) return NextResponse.json({ error: 'Cart line not found.' }, { status: 404 });
   if (line.transaction.isComplete) return NextResponse.json({ error: 'Completed bills cannot be changed.' }, { status: 409 });
-  await db.onSaleProduct.delete({ where: { id } });
+  await supabase.from('OnSaleProduct').delete().eq('id', id);
   return NextResponse.json({ success: true });
 }

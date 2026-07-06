@@ -1,13 +1,13 @@
 export const dynamic = 'force-dynamic';
 
-import { db } from '@/lib/db';
-import { TaxMode } from '@prisma/client';
+import { TaxMode } from '@/src/types/domain';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { formatBillNumber } from '@/lib/bill-number';
 import { authErrorResponse, requireAuth, requirePermission } from '@/lib/auth';
 import { writeAuditLog } from '@/lib/audit';
 import { requireActiveSubscription } from '@/lib/subscription';
+import { createServerClient } from '@/src/lib/supabase/server';
 
 const settingsSchema = z
   .object({
@@ -40,7 +40,13 @@ export async function GET(request: Request) {
     const ctx = await requireAuth(request);
     const cached = shopCache.get(ctx.businessId);
     if (cached && cached.expires > Date.now()) return NextResponse.json(cached.data);
-    const [stored, sequence] = await Promise.all([db.shopData.findFirst({ where: { businessId: ctx.businessId } }), db.billSequence.findUnique({ where: { id: ctx.businessId } })]);
+    const supabase = await createServerClient(request);
+    const [storedResult, sequenceResult] = await Promise.all([
+      supabase.from('ShopData').select('*').eq('businessId', ctx.businessId).maybeSingle(),
+      supabase.from('BillSequence').select('*').eq('id', ctx.businessId).maybeSingle(),
+    ]);
+    const stored = storedResult.data;
+    const sequence = sequenceResult.data;
     const data = stored ?? {
       id: null,
       name: 'Vernex',
@@ -74,7 +80,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const existing = await db.shopData.findFirst({ where: { businessId: ctx.businessId } });
+  const supabase = await createServerClient(request);
+  const { data: existing } = await supabase.from('ShopData').select('*').eq('businessId', ctx.businessId).maybeSingle();
   const values = parsed.data;
   const { billNextNumber, ...shopValues } = values;
   const data = {
@@ -98,17 +105,17 @@ export async function POST(request: Request) {
   };
 
   if (billNextNumber !== undefined || values.billPrefix !== undefined || values.billPadding !== undefined) {
-    const currentSequence = await db.billSequence.findUnique({ where: { id: ctx.businessId } });
+    const { data: currentSequence } = await supabase.from('BillSequence').select('*').eq('id', ctx.businessId).maybeSingle();
     const candidate = formatBillNumber(billNextNumber ?? currentSequence?.nextNumber ?? 1, values.billPrefix ?? existing?.billPrefix ?? 'VNX', values.billPadding ?? existing?.billPadding ?? 6);
-    if (await db.transaction.findUnique({ where: { billNumber: candidate } })) {
+    const { data: duplicate } = await supabase.from('Transaction').select('id').eq('billNumber', candidate).maybeSingle();
+    if (duplicate) {
       return NextResponse.json({ error: `Bill number ${candidate} already exists. Choose a different next number or prefix.` }, { status: 409 });
     }
   }
 
-  const saved = existing
-    ? await db.shopData.update({ where: { id: existing.id }, data })
-    : await db.shopData.create({
-        data: {
+  const saveResult = existing
+    ? await supabase.from('ShopData').update(data).eq('id', existing.id).select('*').single()
+    : await supabase.from('ShopData').insert({
           name: values.storeName ?? 'Vernex',
           tax: values.tax ?? 0,
           country: values.country ?? 'India',
@@ -119,11 +126,12 @@ export async function POST(request: Request) {
           taxId: values.taxId || null,
           receiptFooter: values.receiptFooter || 'Thank you for your business!',
           businessId: ctx.businessId,
-        },
-      });
+        }).select('*').single();
+  if (saveResult.error) return NextResponse.json({ error: 'Unable to save business settings.' }, { status: 400 });
+  const saved = saveResult.data;
 
   if (billNextNumber !== undefined) {
-    await db.billSequence.upsert({ where: { id: ctx.businessId }, create: { id: ctx.businessId, businessId: ctx.businessId, nextNumber: billNextNumber }, update: { nextNumber: billNextNumber, businessId: ctx.businessId } });
+    await supabase.from('BillSequence').upsert({ id: ctx.businessId, businessId: ctx.businessId, nextNumber: billNextNumber });
   }
   shopCache.delete(ctx.businessId);
 
@@ -135,5 +143,6 @@ export async function POST(request: Request) {
     await writeAuditLog(ctx, { action: 'RECEIPT_SETTINGS_UPDATED', entityType: 'ShopData', entityId: saved.id, description: 'Updated receipt settings' });
   }
 
-  return NextResponse.json({ data: { ...saved, billNextNumber: billNextNumber ?? (await db.billSequence.findUnique({ where: { id: ctx.businessId } }))?.nextNumber ?? 1 } });
+  const { data: finalSequence } = await supabase.from('BillSequence').select('nextNumber').eq('id', ctx.businessId).maybeSingle();
+  return NextResponse.json({ data: { ...saved, billNextNumber: billNextNumber ?? finalSequence?.nextNumber ?? 1 } });
 }

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { DeleteAlertDialog } from "./alertDelete";
 import { SheetEdit } from "./sheetEdit";
-import { CatProduct } from "@prisma/client";
+import { CatProduct } from '@/src/types/domain';
 
 type Product = {
   id: string;
