@@ -18,16 +18,17 @@ import { NAVBAR_ITEMS } from '@/constant/navbarMenu';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { TrialBanner } from '@/components/subscription/TrialBanner';
-import { getAuthContext } from '@/lib/client-data';
+import { useBusinessAccess } from '@/hooks/use-business-access';
 import { LogoutButton } from '@/components/auth/LogoutButton';
 import { MobileBottomNav } from '@/components/dashboard/MobileBottomNav';
 import Image from 'next/image';
+import { getModuleForPathname } from '@/lib/modules';
 const RootLayout = ({ children }: RootLayoutProps) => {
   const [storeName, setStoreName] = useState('Vernex');
-  const [role, setRole] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
   const showHeaderSearch = pathname !== '/home';
+  const { role, enabledModules, loading } = useBusinessAccess();
   useEffect(() => {
     const fetchShopData = async () => {
       try {
@@ -52,13 +53,6 @@ const RootLayout = ({ children }: RootLayoutProps) => {
     };
 
     fetchShopData();
-    getAuthContext()
-      .then((data) => {
-        if (!data?.user?.role) throw new Error('Missing role');
-        setRole(data.user.role);
-      })
-      .catch(() => window.location.replace('/login?message=session-expired'));
-
     const handleEventBusEvent = () => {
       fetchShopData();
     };
@@ -70,8 +64,9 @@ const RootLayout = ({ children }: RootLayoutProps) => {
       eventBus.removeListener('fetchStoreData', handleEventBusEvent);
     };
   }, []);
-  const route = NAVBAR_ITEMS.find((item) => item.path === pathname);
-  const denied = role && route?.roles && !route.roles.includes(role as any);
+  const routeModule = getModuleForPathname(pathname);
+  const route = NAVBAR_ITEMS.find((item) => item.path === pathname) ?? NAVBAR_ITEMS.find((item) => item.moduleKey === routeModule);
+  const denied = Boolean(role && routeModule && !enabledModules.includes(routeModule)) || Boolean(role && route && route.roles && !route.roles.includes(role as any));
 
   return (
     <div className="bg-vernex-surface dark:bg-vernex-dark">
@@ -138,7 +133,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
               </span>
             </div>
             <div className="hidden lg:block"><Bread /></div>
-            {showHeaderSearch && (
+            {showHeaderSearch && ['products', 'customers', 'sales_records'].some((key) => enabledModules.includes(key)) && (
               <div className="relative ml-auto hidden min-w-0 flex-1 max-w-xl lg:block">
                 <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-vernex-muted" />
                 <input
@@ -158,26 +153,26 @@ const RootLayout = ({ children }: RootLayoutProps) => {
               <span className="sr-only">Notifications</span>
             </Button>
             <div className="hidden sm:block"><ModeToggle /></div>
-            <Button variant="outline" size="icon" asChild className="h-11 w-11 shrink-0 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white lg:border-vernex-border lg:bg-white lg:text-vernex-navy lg:hover:bg-vernex-surface dark:border-[#1E335F] dark:bg-vernex-navy dark:text-white">
+            {enabledModules.includes('business_settings') && <Button variant="outline" size="icon" asChild className="h-11 w-11 shrink-0 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white lg:border-vernex-border lg:bg-white lg:text-vernex-navy lg:hover:bg-vernex-surface dark:border-[#1E335F] dark:bg-vernex-navy dark:text-white">
               <Link href="/settings">
                 <Settings className="h-4 w-4" />
                 <span className="sr-only">Settings</span>
               </Link>
-            </Button>
+            </Button>}
           </header>
           <main className="flex min-w-0 flex-1 flex-col gap-4 bg-vernex-surface px-3 py-4 pb-24 sm:px-4 md:pb-6 lg:gap-6 lg:p-6 dark:bg-vernex-dark">
             <div
               className="flex flex-1 items-start justify-center"
               x-chunk="dashboard-02-chunk-1"
             >
-              {!role ? (
+              {loading || !role ? (
                 <div className="flex min-h-48 w-full items-center justify-center text-sm text-vernex-muted">
                   Verifying your account...
                 </div>
               ) : denied ? (
                 <div className="w-full rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
                   <h1 className="text-lg font-semibold">Access denied</h1>
-                  <p className="mt-1 text-sm">Your current role does not have permission to open this page.</p>
+                  <p className="mt-1 text-sm">{routeModule && !enabledModules.includes(routeModule) ? 'This feature is not enabled for your business.' : 'Your current role does not have permission to open this page.'}</p>
                 </div>
               ) : children}
             </div>

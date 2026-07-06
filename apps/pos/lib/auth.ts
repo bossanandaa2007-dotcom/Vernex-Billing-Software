@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { hasPermission, isRoleAllowed, type Permission } from '@/lib/permissions';
+import { getModuleForPermission, hasModule } from '@/lib/modules';
 import { createServerClient } from '@/src/lib/supabase/server';
 import type { StaffStatus, UserRole } from '@/src/types/domain';
 
@@ -18,6 +19,7 @@ export type CurrentUserContext = {
   name: string;
   email: string;
   role: UserRole;
+  enabledModules: string[];
 };
 
 export async function getCurrentUserContext(request?: Request): Promise<CurrentUserContext> {
@@ -41,6 +43,12 @@ export async function getCurrentUserContext(request?: Request): Promise<CurrentU
   if ((staff.status as StaffStatus) !== 'ACTIVE') {
     throw new AuthError('Your account is inactive. Contact the business owner.', 403);
   }
+  const { data: moduleRows, error: moduleError } = await supabase
+    .from('business_modules')
+    .select('module_key')
+    .eq('business_id', staff.businessId)
+    .eq('enabled', true);
+  if (moduleError) throw new AuthError('Unable to load your business features. Please try again.', 503);
 
   await supabase
     .from('StaffProfile')
@@ -54,6 +62,7 @@ export async function getCurrentUserContext(request?: Request): Promise<CurrentU
     name: staff.name,
     email: staff.email,
     role: staff.role as UserRole,
+    enabledModules: (moduleRows ?? []).map((row) => String(row.module_key)),
   };
 }
 
@@ -68,6 +77,10 @@ export async function requireRole(request: Request | undefined, roles: UserRole[
 export async function requirePermission(request: Request | undefined, permission: Permission) {
   const ctx = await getCurrentUserContext(request);
   if (!hasPermission(ctx.role, permission)) throw new AuthError('You do not have permission for this action.', 403);
+  const moduleKey = getModuleForPermission(permission as keyof typeof import('@/lib/modules').MODULE_PERMISSION_MAP);
+  if (moduleKey && !hasModule(ctx.enabledModules, moduleKey)) {
+    throw new AuthError('This feature is not enabled for your business.', 403);
+  }
   return ctx;
 }
 

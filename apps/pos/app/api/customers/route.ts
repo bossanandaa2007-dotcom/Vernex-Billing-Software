@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { customerSchema } from '@/lib/customer-schema';
-import { authErrorResponse, requireAuth } from '@/lib/auth';
+import { authErrorResponse, requirePermission } from '@/lib/auth';
 import { requirePaidFeature } from '@/lib/guards';
 import { writeAuditLog } from '@/lib/audit';
 import { createServerClient } from '@/src/lib/supabase/server';
@@ -8,7 +8,7 @@ import { createServerClient } from '@/src/lib/supabase/server';
 export async function GET(request: Request) {
   let ctx;
   try {
-    ctx = await requireAuth(request);
+    ctx = await requirePermission(request, 'CUSTOMER_WRITE');
   } catch (error) {
     const response = authErrorResponse(error);
     if (response) return response;

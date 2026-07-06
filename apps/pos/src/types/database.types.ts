@@ -26,6 +26,13 @@ export type Database = {
         subscriptionStatus: SubscriptionStatus; planName: string; activatedAt: string | null;
         suspendedAt: string | null; createdAt: string; updatedAt: string;
       }>;
+      business_modules: Table<{
+        id: string; business_id: string; module_key: string; enabled: boolean;
+        created_at: string; updated_at: string;
+      }, {
+        id?: string; business_id: string; module_key: string; enabled?: boolean;
+        created_at?: string; updated_at?: string;
+      }>;
       StaffProfile: Table<{
         id: string; authUserId: string; userId: string; businessId: string; name: string;
         email: string; phone: string | null; role: UserRole; status: StaffStatus;

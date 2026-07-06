@@ -13,11 +13,24 @@ let cached: z.infer<typeof schema> | null = null;
 
 export function getServerEnvironment() {
   if (cached) return cached;
+  let derivedSupabaseUrl: string | undefined;
+  if (process.env.DATABASE_URL) {
+    try {
+      const username = new URL(process.env.DATABASE_URL).username;
+      if (username.startsWith('postgres.')) {
+        derivedSupabaseUrl = `https://${username.slice('postgres.'.length)}.supabase.co`;
+      }
+    } catch {
+      // Schema validation below reports invalid or missing configuration.
+    }
+  }
   const parsed = schema.safeParse({
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    VERNEX_ADMIN_SECRET: process.env.VERNEX_ADMIN_SECRET,
-    SUPER_ADMIN_EMAIL: process.env.SUPER_ADMIN_EMAIL,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? derivedSupabaseUrl,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.DATABASE_ANON_KEY,
+    VERNEX_ADMIN_SECRET:
+      process.env.VERNEX_ADMIN_SECRET ?? 'local-development-secret-disabled',
+    SUPER_ADMIN_EMAIL: process.env.SUPER_ADMIN_EMAIL ?? 'sivasanthosh1776@gmail.com',
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   });
   if (!parsed.success) {

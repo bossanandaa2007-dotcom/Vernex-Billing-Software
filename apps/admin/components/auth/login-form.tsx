@@ -28,9 +28,9 @@ export function LoginForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const result = await response.json();
+      const result = await response.json().catch(() => null);
       if (!response.ok) {
-        setError(result.error || 'Unable to sign in. Please try again.');
+        setError(result?.error || 'Login server error. Please restart the admin server and try again.');
         return;
       }
       window.location.replace('/');
@@ -65,4 +65,3 @@ export function LoginForm() {
     </section>
   );
 }
-

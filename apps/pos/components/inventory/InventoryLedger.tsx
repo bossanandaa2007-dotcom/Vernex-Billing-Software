@@ -11,6 +11,7 @@ import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'react-toastify';
+import { useBusinessAccess } from '@/hooks/use-business-access';
 
 type Movement = {
   id: string;
@@ -32,6 +33,7 @@ export function InventoryLedger({ movements, products }: { movements: Movement[]
   const [newStock, setNewStock] = useState('');
   const [reason, setReason] = useState('Physical stock correction');
   const [saving, setSaving] = useState(false);
+  const { hasModuleAccess } = useBusinessAccess();
   const router = useRouter();
 
   const adjust = async () => {
@@ -54,7 +56,7 @@ export function InventoryLedger({ movements, products }: { movements: Movement[]
 
   return (
     <div className="space-y-5">
-      <Card className="border-vernex-border/80 shadow-sm">
+      {hasModuleAccess('stock_adjustment') && <Card className="border-vernex-border/80 shadow-sm">
         <CardHeader className="border-b border-vernex-border dark:border-[#1E335F]">
           <CardTitle className="flex items-center gap-2 text-base">
             <SlidersHorizontal className="h-5 w-5 text-vernex-gold" />
@@ -90,7 +92,7 @@ export function InventoryLedger({ movements, products }: { movements: Movement[]
             {saving ? 'Updating...' : 'Adjust Stock'}
           </Button>
         </CardContent>
-      </Card>
+      </Card>}
 
       <Card className="overflow-hidden border-vernex-border/80 shadow-sm">
         <CardHeader className="border-b border-vernex-border dark:border-[#1E335F]">

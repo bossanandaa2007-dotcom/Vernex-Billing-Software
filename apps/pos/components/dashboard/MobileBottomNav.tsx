@@ -2,26 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import { NAVBAR_ITEMS } from '@/constant/navbarMenu';
-import { getAuthContext } from '@/lib/client-data';
+import { useBusinessAccess } from '@/hooks/use-business-access';
 import { cn } from '@/lib/utils';
 
 const mobilePaths = ['/home', '/orders', '/product', '/records', '/settings'];
 
 export function MobileBottomNav() {
   const pathname = usePathname();
-  const [role, setRole] = useState<string | null>(null);
-
-  useEffect(() => {
-    getAuthContext()
-      .then((data) => setRole(data?.user?.role ?? null))
-      .catch(() => setRole(null));
-  }, []);
+  const { role, enabledModules } = useBusinessAccess();
 
   const items = NAVBAR_ITEMS.filter(
     (item) =>
       mobilePaths.includes(item.path) &&
+      enabledModules.includes(item.moduleKey) &&
       (!item.roles || (role && item.roles.includes(role as never)))
   );
 

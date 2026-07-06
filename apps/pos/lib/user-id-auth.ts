@@ -10,8 +10,12 @@ type EdgeLoginResponse = {
 
 export async function signInWithUserId(userId: string, password: string) {
   const environment = getServerEnvironment();
+  const normalizedUserId = userId.trim().toLowerCase();
+  const endpoint = normalizedUserId.includes('@')
+    ? `${environment.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password`
+    : `${environment.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/login-with-user-id`;
   const response = await fetch(
-    `${environment.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/login-with-user-id`,
+    endpoint,
     {
       method: 'POST',
       headers: {
@@ -19,7 +23,11 @@ export async function signInWithUserId(userId: string, password: string) {
         Authorization: `Bearer ${environment.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
         apikey: environment.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ userId: userId.trim().toLowerCase(), password }),
+      body: JSON.stringify(
+        normalizedUserId.includes('@')
+          ? { email: normalizedUserId, password }
+          : { userId: normalizedUserId, password }
+      ),
       cache: 'no-store',
     }
   );
