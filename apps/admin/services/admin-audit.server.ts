@@ -9,12 +9,14 @@ export async function writeSuperAdminAudit({
   entityType,
   entityId,
   description,
+  metadata,
 }: {
   businessId: string;
   action: string;
   entityType: string;
   entityId?: string;
   description: string;
+  metadata?: Record<string, unknown>;
 }) {
   await requireSuperAdmin();
   const token = (await cookies()).get(adminCookieName)?.value;
@@ -27,5 +29,6 @@ export async function writeSuperAdminAudit({
     entityType,
     entityId: entityId ?? null,
     description,
+    metadata: metadata ?? null,
   });
 }

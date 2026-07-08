@@ -1,5 +1,5 @@
-import { db } from '@/lib/db';
-import { PaymentMethod } from '@prisma/client';
+import { PaymentMethod } from '@/src/types/domain';
+import { createServerClient } from '@/src/lib/supabase/server';
 
 export type ReportRange = { start: Date; end: Date };
 
@@ -7,15 +7,18 @@ const paymentMethods: PaymentMethod[] = ['CASH', 'UPI', 'CARD', 'CREDIT', 'ONLIN
 const money = (value: unknown) => Number(value ?? 0);
 
 export async function getShopForBusiness(businessId: string) {
-  return db.shopData.findFirst({ where: { businessId } });
+  const supabase = await createServerClient();
+  return (await supabase.from('ShopData').select('*').eq('businessId', businessId).maybeSingle()).data;
 }
 
 export async function getSalesReport(businessId: string, range: ReportRange) {
-  const transactions = await db.transaction.findMany({
-    where: { businessId, isComplete: true, completedAt: { gte: range.start, lte: range.end } },
-    include: { products: true, customer: true },
-    orderBy: { completedAt: 'desc' },
-  });
+  const supabase = await createServerClient();
+  const { data } = await supabase.from('Transaction')
+    .select('*, products:OnSaleProduct(*), customer:Customer(*)')
+    .eq('businessId', businessId).eq('isComplete', true)
+    .gte('completedAt', range.start.toISOString()).lte('completedAt', range.end.toISOString())
+    .order('completedAt', { ascending: false });
+  const transactions = (data ?? []) as any[];
   return transactions.map((sale) => ({
     id: sale.id,
     billNumber: sale.billNumber ?? sale.id,
@@ -23,7 +26,7 @@ export async function getSalesReport(businessId: string, range: ReportRange) {
     customerName: sale.customerName ?? 'Walk-in',
     paymentMethod: sale.paymentMethod ?? 'UNKNOWN',
     paymentStatus: sale.paymentStatus,
-    itemCount: sale.products.reduce((sum, line) => sum + line.quantity, 0),
+    itemCount: sale.products.reduce((sum: number, line: any) => sum + line.quantity, 0),
     subtotal: money(sale.subtotal),
     discount: money(sale.discount),
     taxAmount: money(sale.taxAmount),
@@ -34,40 +37,44 @@ export async function getSalesReport(businessId: string, range: ReportRange) {
 }
 
 export async function getPaymentReport(businessId: string, range: ReportRange) {
+  const supabase = await createServerClient();
   const [sales, refunds] = await Promise.all([
-    db.transaction.findMany({
-      where: { businessId, isComplete: true, completedAt: { gte: range.start, lte: range.end } },
-      select: { paymentMethod: true, paymentStatus: true, totalAmount: true, amountReceived: true },
-    }),
-    db.saleReturn.aggregate({ where: { businessId, createdAt: { gte: range.start, lte: range.end } }, _sum: { refundAmount: true }, _count: true }),
+    supabase.from('Transaction').select('paymentMethod,paymentStatus,totalAmount,amountReceived')
+      .eq('businessId', businessId).eq('isComplete', true)
+      .gte('completedAt', range.start.toISOString()).lte('completedAt', range.end.toISOString()),
+    supabase.from('SaleReturn').select('refundAmount')
+      .eq('businessId', businessId)
+      .gte('createdAt', range.start.toISOString()).lte('createdAt', range.end.toISOString()),
   ]);
   const totals = Object.fromEntries(paymentMethods.map((method) => [method, 0])) as Record<PaymentMethod, number>;
   let pendingCredit = 0;
-  for (const sale of sales) {
+  for (const sale of sales.data ?? []) {
     const method = sale.paymentMethod;
-    if (method) totals[method] += money(sale.totalAmount);
+    if (method && paymentMethods.includes(method as PaymentMethod)) totals[method as PaymentMethod] += money(sale.totalAmount);
     if (sale.paymentStatus === 'PENDING' || sale.paymentStatus === 'PARTIAL') {
       pendingCredit += money(sale.totalAmount) - money(sale.amountReceived);
     }
   }
-  const refundTotal = money(refunds._sum.refundAmount);
+  const refundTotal = (refunds.data ?? []).reduce((sum, item) => sum + money(item.refundAmount), 0);
   const grossCollection = Object.values(totals).reduce((sum, value) => sum + value, 0);
-  return { totals, refundTotal, refundCount: refunds._count, pendingCredit, grossCollection, netCollection: grossCollection - refundTotal };
+  return { totals, refundTotal, refundCount: refunds.data?.length ?? 0, pendingCredit, grossCollection, netCollection: grossCollection - refundTotal };
 }
 
 export async function getProductReport(businessId: string, range: ReportRange) {
+  const supabase = await createServerClient();
   const [sales, returns, stock] = await Promise.all([
-    db.onSaleProduct.findMany({
-      where: { transaction: { businessId, isComplete: true, completedAt: { gte: range.start, lte: range.end } } },
-      include: { transaction: { select: { billNumber: true, completedAt: true } } },
-    }),
-    db.returnItem.findMany({ where: { saleReturn: { businessId, createdAt: { gte: range.start, lte: range.end } } } }),
-    db.productStock.findMany({ where: { businessId, Product: { some: {} } }, include: { Product: true }, orderBy: { name: 'asc' } }),
+    supabase.from('OnSaleProduct').select('*, transaction:Transaction!inner(billNumber,completedAt,businessId,isComplete)')
+      .eq('transaction.businessId', businessId).eq('transaction.isComplete', true)
+      .gte('transaction.completedAt', range.start.toISOString()).lte('transaction.completedAt', range.end.toISOString()),
+    supabase.from('ReturnItem').select('*, saleReturn:SaleReturn!inner(businessId,createdAt)')
+      .eq('saleReturn.businessId', businessId)
+      .gte('saleReturn.createdAt', range.start.toISOString()).lte('saleReturn.createdAt', range.end.toISOString()),
+    supabase.from('ProductStock').select('*, Product(*)').eq('businessId', businessId).order('name'),
   ]);
   const returned = new Map<string, number>();
-  for (const item of returns) returned.set(item.productName, (returned.get(item.productName) ?? 0) + item.quantity);
+  for (const item of returns.data ?? []) returned.set(item.productName, (returned.get(item.productName) ?? 0) + item.quantity);
   const byProduct = new Map<string, { productName: string; quantitySold: number; revenue: number; returnedQuantity: number }>();
-  for (const line of sales) {
+  for (const line of sales.data ?? []) {
     const key = line.productName || line.productId || line.id;
     const entry = byProduct.get(key) ?? { productName: line.productName || 'Unknown product', quantitySold: 0, revenue: 0, returnedQuantity: 0 };
     entry.quantitySold += line.quantity;
@@ -77,9 +84,10 @@ export async function getProductReport(businessId: string, range: ReportRange) {
   const productValues = Array.from(byProduct.values());
   for (const entry of productValues) entry.returnedQuantity = returned.get(entry.productName) ?? 0;
   const products = productValues.sort((a, b) => b.quantitySold - a.quantitySold);
-  const lowStock = stock.filter((item) => item.stock <= 10).map((item) => ({ id: item.id, name: item.name, stock: item.stock, category: item.cat }));
-  const stockValue = stock.reduce((sum, item) => sum + item.price * item.stock, 0);
-  const slowMoving = stock
+  const stockRows = stock.data ?? [];
+  const lowStock = stockRows.filter((item) => item.stock <= 10).map((item) => ({ id: item.id, name: item.name, stock: item.stock, category: item.cat }));
+  const stockValue = stockRows.reduce((sum, item) => sum + item.price * item.stock, 0);
+  const slowMoving = stockRows
     .filter((item) => !products.some((sold) => sold.productName === item.name))
     .slice(0, 10)
     .map((item) => ({ id: item.id, name: item.name, stock: item.stock }));
@@ -87,55 +95,59 @@ export async function getProductReport(businessId: string, range: ReportRange) {
 }
 
 export async function getCustomerReport(businessId: string, range: ReportRange) {
-  const customers = await db.customer.findMany({
-    where: { businessId, isActive: true },
-    include: {
-      transactions: {
-        where: { businessId, isComplete: true, completedAt: { gte: range.start, lte: range.end } },
-        orderBy: { completedAt: 'desc' },
-      },
-    },
-  });
+  const supabase = await createServerClient();
+  const { data: customerRows } = await supabase.from('Customer')
+    .select('*, transactions:Transaction(*)')
+    .eq('businessId', businessId).eq('isActive', true);
+  const customers = (customerRows ?? []) as any[];
   return customers
     .map((customer) => {
-      const totalSpent = customer.transactions.reduce((sum, sale) => sum + money(sale.totalAmount) - money(sale.refundedAmount), 0);
-      const pendingCredit = customer.transactions.reduce((sum, sale) => ['PENDING', 'PARTIAL'].includes(sale.paymentStatus) ? sum + money(sale.totalAmount) - money(sale.amountReceived) : sum, 0);
+      const transactions = (customer.transactions ?? []).filter((sale: any) => sale.isComplete && sale.completedAt && new Date(sale.completedAt) >= range.start && new Date(sale.completedAt) <= range.end)
+        .sort((a: any, b: any) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
+      const totalSpent = transactions.reduce((sum: number, sale: any) => sum + money(sale.totalAmount) - money(sale.refundedAmount), 0);
+      const pendingCredit = transactions.reduce((sum: number, sale: any) => ['PENDING', 'PARTIAL'].includes(sale.paymentStatus) ? sum + money(sale.totalAmount) - money(sale.amountReceived) : sum, 0);
       return {
         id: customer.id,
         name: customer.name,
         phone: customer.phone,
-        billCount: customer.transactions.length,
+        billCount: transactions.length,
         totalSpent,
         pendingCredit,
-        lastPurchaseDate: customer.transactions[0]?.completedAt ?? null,
+        lastPurchaseDate: transactions[0]?.completedAt ?? null,
       };
     })
     .sort((a, b) => b.totalSpent - a.totalSpent);
 }
 
 export async function getInventoryReport(businessId: string, range: ReportRange) {
+  const supabase = await createServerClient();
   const [movements, products] = await Promise.all([
-    db.inventoryMovement.findMany({ where: { businessId, createdAt: { gte: range.start, lte: range.end } }, orderBy: { createdAt: 'desc' }, take: 500 }),
-    db.productStock.findMany({ where: { businessId, Product: { some: {} } }, orderBy: { name: 'asc' } }),
+    supabase.from('InventoryMovement').select('*').eq('businessId', businessId)
+      .gte('createdAt', range.start.toISOString()).lte('createdAt', range.end.toISOString())
+      .order('createdAt', { ascending: false }).limit(500),
+    supabase.from('ProductStock').select('*, Product!inner(id)').eq('businessId', businessId).order('name'),
   ]);
-  const summary = movements.reduce<Record<string, number>>((acc, movement) => {
+  const movementRows = movements.data ?? [];
+  const productRows = products.data ?? [];
+  const summary = movementRows.reduce<Record<string, number>>((acc, movement) => {
     acc[movement.movementType] = (acc[movement.movementType] ?? 0) + Math.abs(movement.quantityChange);
     return acc;
   }, {});
   return {
-    movements,
+    movements: movementRows,
     summary,
-    currentStock: products.map((item) => ({ id: item.id, name: item.name, stock: item.stock, category: item.cat })),
-    lowStock: products.filter((item) => item.stock <= 10).map((item) => ({ id: item.id, name: item.name, stock: item.stock })),
+    currentStock: productRows.map((item) => ({ id: item.id, name: item.name, stock: item.stock, category: item.cat })),
+    lowStock: productRows.filter((item) => item.stock <= 10).map((item) => ({ id: item.id, name: item.name, stock: item.stock })),
   };
 }
 
 export async function getReturnsReport(businessId: string, range: ReportRange) {
-  const returns = await db.saleReturn.findMany({
-    where: { businessId, createdAt: { gte: range.start, lte: range.end } },
-    include: { items: true },
-    orderBy: { createdAt: 'desc' },
-  });
+  const supabase = await createServerClient();
+  const { data: returnRows } = await supabase.from('SaleReturn').select('*, items:ReturnItem(*)')
+    .eq('businessId', businessId)
+    .gte('createdAt', range.start.toISOString()).lte('createdAt', range.end.toISOString())
+    .order('createdAt', { ascending: false });
+  const returns = (returnRows ?? []) as any[];
   return {
     returns: returns.map((saleReturn) => ({
       id: saleReturn.id,
@@ -144,7 +156,7 @@ export async function getReturnsReport(businessId: string, range: ReportRange) {
       refundMethod: saleReturn.refundMethod,
       status: saleReturn.status,
       reason: saleReturn.reason,
-      itemCount: saleReturn.items.reduce((sum, item) => sum + item.quantity, 0),
+      itemCount: saleReturn.items.reduce((sum: number, item: any) => sum + item.quantity, 0),
       createdAt: saleReturn.createdAt,
     })),
     totalRefund: returns.reduce((sum, item) => sum + money(item.refundAmount), 0),
@@ -152,10 +164,11 @@ export async function getReturnsReport(businessId: string, range: ReportRange) {
 }
 
 export async function getStaffReport(businessId: string, range: ReportRange) {
-  const logs = await db.auditLog.findMany({
-    where: { businessId, createdAt: { gte: range.start, lte: range.end } },
-    orderBy: { createdAt: 'desc' },
-  });
+  const supabase = await createServerClient();
+  const { data: logRows } = await supabase.from('AuditLog').select('*').eq('businessId', businessId)
+    .gte('createdAt', range.start.toISOString()).lte('createdAt', range.end.toISOString())
+    .order('createdAt', { ascending: false });
+  const logs = logRows ?? [];
   const byStaff = new Map<string, { userName: string; role: string; sales: number; returns: number; stockAdjustments: number; settingsChanges: number }>();
   for (const log of logs) {
     const key = log.userId ?? log.userNameSnapshot;

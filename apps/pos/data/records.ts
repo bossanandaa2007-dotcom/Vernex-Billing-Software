@@ -1,5 +1,5 @@
-import { db } from '@/lib/db';
 import { getCurrentUserContext } from '@/lib/auth';
+import { createServerClient } from '@/src/lib/supabase/server';
 
 export type RecordsPeriod = 'all' | 'daily' | 'weekly' | 'monthly';
 
@@ -36,39 +36,28 @@ export async function fetchRecords({
     const ctx = await getCurrentUserContext();
   const trimmedQuery = query?.trim();
   const range = period === 'all' ? null : getPeriodRange(period);
-  const where = {
-    businessId: ctx.businessId,
-    isComplete: true,
-    ...(range ? { completedAt: { gte: range.start, lte: range.end } } : {}),
-    ...(trimmedQuery
-      ? {
-          OR: [
-            { id: { contains: trimmedQuery, mode: 'insensitive' as const } },
-            { billNumber: { contains: trimmedQuery, mode: 'insensitive' as const } },
-            { customerName: { contains: trimmedQuery, mode: 'insensitive' as const } },
-            { customerPhone: { contains: trimmedQuery, mode: 'insensitive' as const } },
-          ],
-        }
-      : {}),
-  };
-  const [results, totalTransactions, shop] = await Promise.all([
-    db.transaction.findMany({
-      where,
-      skip,
-      take,
-      include: { products: { select: { quantity: true } } },
-      orderBy: { completedAt: 'desc' },
-    }),
-    db.transaction.count({ where }),
-    db.shopData.findFirst({ where: { businessId: ctx.businessId } }),
+  const supabase = await createServerClient();
+  let recordsQuery = supabase.from('Transaction')
+    .select('*, products:OnSaleProduct(quantity)', { count: 'exact' })
+    .eq('businessId', ctx.businessId).eq('isComplete', true)
+    .order('completedAt', { ascending: false }).range(skip, skip + take - 1);
+  if (range) recordsQuery = recordsQuery.gte('completedAt', range.start.toISOString()).lte('completedAt', range.end.toISOString());
+  if (trimmedQuery) recordsQuery = recordsQuery.or(`id.ilike.%${trimmedQuery}%,billNumber.ilike.%${trimmedQuery}%,customerName.ilike.%${trimmedQuery}%,customerPhone.ilike.%${trimmedQuery}%`);
+  const [recordsResult, shopResult] = await Promise.all([
+    recordsQuery,
+    supabase.from('ShopData').select('currency').eq('businessId', ctx.businessId).maybeSingle(),
   ]);
+  if (recordsResult.error) throw recordsResult.error;
+  const results = (recordsResult.data ?? []) as any[];
+  const totalTransactions = recordsResult.count ?? 0;
+  const shop = shopResult.data;
 
     return {
     data: results.map((transaction) => ({
       id: transaction.id,
       billNumber: transaction.billNumber ?? transaction.id,
-      completedAt: transaction.completedAt ?? transaction.createdAt,
-      itemCount: transaction.products.reduce((sum, item) => sum + item.quantity, 0),
+      completedAt: new Date(transaction.completedAt ?? transaction.createdAt),
+      itemCount: transaction.products.reduce((sum: number, item: any) => sum + item.quantity, 0),
       subtotal: Number(transaction.subtotal),
       taxAmount: Number(transaction.taxAmount),
       discount: Number(transaction.discount),

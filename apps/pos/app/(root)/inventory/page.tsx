@@ -1,20 +1,23 @@
 import { PageHeading } from '@/components/dashboard/page-heading';
 import { InventoryLedger } from '@/components/inventory/InventoryLedger';
-import { db } from '@/lib/db';
 import { getCurrentUserContext } from '@/lib/auth';
 import type { Metadata } from 'next';
+import { createServerClient } from '@/src/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Inventory Ledger' };
 export const dynamic = 'force-dynamic';
 export default async function InventoryPage() {
-  let movements: Awaited<ReturnType<typeof db.inventoryMovement.findMany>> = [];
-  let products: Awaited<ReturnType<typeof db.productStock.findMany>> = [];
+  let movements: any[] = [];
+  let products: any[] = [];
   try {
     const ctx = await getCurrentUserContext();
-    [movements, products] = await Promise.all([
-      db.inventoryMovement.findMany({ where: { businessId: ctx.businessId }, orderBy: { createdAt: 'desc' }, take: 200 }),
-      db.productStock.findMany({ where: { businessId: ctx.businessId, Product: { some: {} } }, orderBy: { name: 'asc' } }),
+    const supabase = await createServerClient();
+    const [movementResult, productResult] = await Promise.all([
+      supabase.from('InventoryMovement').select('*').eq('businessId', ctx.businessId).order('createdAt', { ascending: false }).limit(200),
+      supabase.from('ProductStock').select('*, Product!inner(id)').eq('businessId', ctx.businessId).order('name'),
     ]);
+    movements = movementResult.data ?? [];
+    products = productResult.data ?? [];
   } catch {
     // The ledger component renders its existing empty state while the database recovers.
   }

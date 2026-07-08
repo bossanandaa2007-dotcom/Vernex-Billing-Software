@@ -1,4 +1,4 @@
-import { UserRole } from '@prisma/client';
+import { UserRole } from '@/src/types/domain';
 
 export type Permission =
   | 'DASHBOARD_VIEW'

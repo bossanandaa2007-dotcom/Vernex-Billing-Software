@@ -35,7 +35,6 @@ jobs:
 
     - name: Set up .env file
       run: |
-        echo DATABASE_URL=${{ secrets.DATABASE_URL }} >> .env
         echo WEATHER_API=${{ secrets.WEATHER_API }} >> .env
 
     - name: Build Docker image

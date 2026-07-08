@@ -1,4 +1,3 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerEnvironment } from '@/lib/env.server';
@@ -21,25 +20,15 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: 'Enter a valid business and plan name.' }, { status: 400 });
   try {
-    const existing = await db.business.findUnique({
-      where: { id: parsed.data.businessId },
-      select: { id: true, subscriptionStatus: true, planName: true, activatedAt: true },
+    const environment = getServerEnvironment();
+    const response = await fetch(`${environment.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/platform-admin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: environment.NEXT_PUBLIC_SUPABASE_ANON_KEY },
+      body: JSON.stringify({ action: 'activate', secret: suppliedSecret, ...parsed.data }),
+      cache: 'no-store',
     });
-    if (!existing) return NextResponse.json({ error: 'Business account not found.' }, { status: 404 });
-    if (existing.subscriptionStatus === 'ACTIVE') {
-      return NextResponse.json({ activation: existing, alreadyActive: true });
-    }
-    const activation = await db.business.update({
-      where: { id: parsed.data.businessId },
-      data: {
-        subscriptionStatus: 'ACTIVE',
-        planName: parsed.data.planName,
-        activatedAt: new Date(),
-        suspendedAt: null,
-      },
-      select: { id: true, subscriptionStatus: true, planName: true, activatedAt: true },
-    });
-    return NextResponse.json({ activation, alreadyActive: false });
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
   } catch {
     return NextResponse.json({ error: 'Unable to activate this business. Please try again.' }, { status: 500 });
   }

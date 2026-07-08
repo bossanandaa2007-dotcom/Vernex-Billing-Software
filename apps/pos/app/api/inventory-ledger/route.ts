@@ -1,10 +1,9 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { authErrorResponse, requirePermission } from '@/lib/auth';
 import { requirePaidFeature } from '@/lib/guards';
-import { writeAuditLog } from '@/lib/audit';
 import { safeOperationMessage } from '@/lib/api-error';
+import { createServerClient } from '@/src/lib/supabase/server';
 
 const adjustmentSchema = z.object({
   productId: z.string().min(1),
@@ -16,9 +15,12 @@ export async function GET(request: Request) {
   let ctx;
   try { ctx = await requirePermission(request, 'INVENTORY_VIEW'); } catch (error) { const response = authErrorResponse(error); if (response) return response; throw error; }
   const productId = new URL(request.url).searchParams.get('productId') ?? undefined;
-  return NextResponse.json(await db.inventoryMovement.findMany({
-    where: { businessId: ctx.businessId, ...(productId ? { productId } : {}) }, orderBy: { createdAt: 'desc' }, take: 200,
-  }));
+  const supabase = await createServerClient(request);
+  let query = supabase.from('InventoryMovement').select('*').eq('businessId', ctx.businessId).order('createdAt', { ascending: false }).limit(200);
+  if (productId) query = query.eq('productId', productId);
+  const { data, error } = await query;
+  if (error) return NextResponse.json({ error: 'Unable to load inventory.' }, { status: 500 });
+  return NextResponse.json(data);
 }
 
 export async function POST(request: Request) {
@@ -27,18 +29,13 @@ export async function POST(request: Request) {
   const parsed = adjustmentSchema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   try {
-    const result = await db.$transaction(async (tx) => {
-      const product = await tx.productStock.findFirst({ where: { id: parsed.data.productId, businessId: ctx.businessId } });
-      if (!product) throw new Error('Product not found.');
-      const updated = await tx.productStock.update({ where: { id: product.id }, data: { stock: parsed.data.newStock } });
-      const movement = await tx.inventoryMovement.create({ data: {
-        businessId: ctx.businessId, productId: product.id, productNameSnapshot: product.name, movementType: 'ADJUSTMENT',
-        quantityChange: updated.stock - product.stock, previousStock: product.stock, newStock: updated.stock,
-        referenceType: 'ADJUSTMENT', reason: parsed.data.reason,
-      }});
-      return { product: updated, movement };
+    const supabase = await createServerClient(request);
+    const { data: result, error } = await supabase.rpc('adjust_stock', {
+      p_product_id: parsed.data.productId,
+      p_new_stock: parsed.data.newStock,
+      p_reason: parsed.data.reason,
     });
-    await writeAuditLog(ctx, { action: 'STOCK_ADJUSTED', entityType: 'ProductStock', entityId: result.product.id, description: `Adjusted stock for ${result.product.name}`, metadata: { newStock: result.product.stock } });
+    if (error) throw new Error(error.message);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

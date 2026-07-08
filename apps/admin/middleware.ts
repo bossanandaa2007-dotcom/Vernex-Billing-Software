@@ -11,9 +11,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const allowedEmail = process.env.SUPER_ADMIN_EMAIL?.toLowerCase();
+  let url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url && process.env.DATABASE_URL) {
+    try {
+      const username = new URL(process.env.DATABASE_URL).username;
+      if (username.startsWith('postgres.')) url = `https://${username.slice('postgres.'.length)}.supabase.co`;
+    } catch {}
+  }
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.DATABASE_ANON_KEY;
+  const allowedEmail = (process.env.SUPER_ADMIN_EMAIL ?? 'sivasanthosh1776@gmail.com').toLowerCase();
   if (!url || !key || !allowedEmail) return NextResponse.redirect(new URL('/login', request.url));
 
   try {
@@ -37,6 +43,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|icon.png).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|icon.png|vernex-logo.png).*)'],
 };
-

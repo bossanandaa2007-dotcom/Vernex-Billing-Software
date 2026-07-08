@@ -1,6 +1,6 @@
-import { Prisma } from '@prisma/client';
-import { CurrentUserContext } from '@/lib/auth';
-import { db } from '@/lib/db';
+import type { CurrentUserContext } from '@/lib/auth';
+import { createServerClient } from '@/src/lib/supabase/server';
+import type { Json } from '@/src/types/domain';
 
 export async function writeAuditLog(
   ctx: CurrentUserContext,
@@ -10,26 +10,20 @@ export async function writeAuditLog(
     entityId?: string | null;
     referenceNumber?: string | null;
     description: string;
-    metadata?: Prisma.InputJsonValue;
+    metadata?: Json;
   },
 ) {
-  try {
-    await db.auditLog.create({
-      data: {
-        businessId: ctx.businessId,
-        userId: ctx.staffId,
-        userNameSnapshot: ctx.name,
-        roleSnapshot: ctx.role,
-        action: input.action,
-        entityType: input.entityType,
-        entityId: input.entityId ?? null,
-        referenceNumber: input.referenceNumber ?? null,
-        description: input.description,
-        metadata: input.metadata ?? undefined,
-      },
-    });
-  } catch (error) {
-    console.error('Audit log failed:', error);
-  }
+  const supabase = await createServerClient();
+  await supabase.from('AuditLog').insert({
+    businessId: ctx.businessId,
+    userId: ctx.staffId,
+    userNameSnapshot: ctx.name,
+    roleSnapshot: ctx.role,
+    action: input.action,
+    entityType: input.entityType,
+    entityId: input.entityId ?? null,
+    referenceNumber: input.referenceNumber ?? null,
+    description: input.description,
+    metadata: input.metadata ?? null,
+  });
 }
-

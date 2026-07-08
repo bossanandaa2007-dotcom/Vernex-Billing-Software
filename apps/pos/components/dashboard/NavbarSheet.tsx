@@ -4,25 +4,19 @@ import { SheetClose, SheetContent } from '@/components/ui/sheet';
 import { NAVBAR_ITEMS } from '@/constant/navbarMenu';
 import { usePathname } from 'next/navigation';
 import { VernexBrand } from './brand';
-import { useEffect, useState } from 'react';
-import { getAuthContext } from '@/lib/client-data';
+import { useBusinessAccess } from '@/hooks/use-business-access';
 import { LogoutButton } from '@/components/auth/LogoutButton';
 
 const bottomNavigationPaths = new Set(['/home', '/orders', '/product', '/records', '/settings']);
 
 export function NavbarSheet({ storeName }: { storeName: string }) {
   const pathname = usePathname();
-  const [role, setRole] = useState<string | null>(null);
-
-  useEffect(() => {
-    getAuthContext()
-      .then((data) => setRole(data?.user?.role ?? null))
-      .catch(() => setRole(null));
-  }, []);
+  const { role, enabledModules } = useBusinessAccess();
   const items = role
     ? NAVBAR_ITEMS.filter(
         (item) =>
           !bottomNavigationPaths.has(item.path) &&
+          enabledModules.includes(item.moduleKey) &&
           (!item.roles || item.roles.includes(role as any))
       )
     : [];

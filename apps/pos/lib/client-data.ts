@@ -18,6 +18,10 @@ export function getAuthContext() {
   return authContextRequest;
 }
 
+export function resetAuthContextCache() {
+  authContextRequest = null;
+}
+
 export function getSubscription() {
   subscriptionRequest ??= getJson('/api/subscription').catch((error) => {
     subscriptionRequest = null;

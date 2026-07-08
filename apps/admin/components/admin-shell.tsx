@@ -122,6 +122,7 @@ export function AdminShell({
           <div className="hidden min-w-0 items-center gap-2 text-sm text-slate-500 md:flex">
             {crumbs.map((crumb, index) => <span key={`${crumb}-${index}`} className={index === crumbs.length - 1 ? 'font-semibold text-slate-900 dark:text-white' : ''}>{index > 0 && <span className="mr-2 text-slate-300">/</span>}{crumb}</span>)}
           </div>
+          {/^\/businesses\/[^/]+$/.test(pathname) && <Link href={`${pathname}/modules`} className="inline-flex h-9 items-center rounded-md border border-slate-300 px-3 text-sm font-semibold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">Modules</Link>}
           <div className="relative ml-auto w-full max-w-md">
             <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
             <Input value={query} onChange={(event) => { setQuery(event.target.value); setSearchOpen(true); }} onFocus={() => setSearchOpen(true)} placeholder="Search businesses, owners, users..." className="pl-9" />
@@ -148,4 +149,3 @@ export function AdminShell({
     </div>
   );
 }
-

@@ -9,6 +9,7 @@ import { useSearchParams } from 'next/navigation';
 import { use, useEffect, useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { ReturnPanel } from '@/components/returns/ReturnPanel';
+import { useBusinessAccess } from '@/hooks/use-business-access';
 
 export default function DetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -16,6 +17,7 @@ export default function DetailPage({ params }: { params: Promise<{ id: string }>
   const [items, setItems] = useState<ReceiptItem[]>([]);
   const [shop, setShop] = useState<ReceiptShop>({});
   const [returns, setReturns] = useState<Array<{ items: Array<{ onSaleProductId: string; quantity: number }> }>>([]);
+  const { hasModuleAccess } = useBusinessAccess();
   const receiptRef = useRef<HTMLDivElement>(null);
   const autoPrinted = useRef(false);
   const searchParams = useSearchParams();
@@ -51,5 +53,5 @@ export default function DetailPage({ params }: { params: Promise<{ id: string }>
   return <div className="w-full space-y-6"><Card className="w-full">
     <CardHeader className="flex-row items-center justify-between"><CardTitle>{sale.billNumber || sale.id}</CardTitle><ReceiptActions receiptRef={receiptRef} label="Reprint Receipt" /></CardHeader>
     <CardContent><div className="rounded-lg bg-slate-100 p-3"><PrintableReceipt ref={receiptRef} sale={sale} items={items} shop={shop} /></div></CardContent>
-  </Card><ReturnPanel transactionId={sale.id} items={items} returns={returns} onComplete={load} /></div>;
+  </Card>{hasModuleAccess('returns_refunds') && <ReturnPanel transactionId={sale.id} items={items} returns={returns} onComplete={load} />}</div>;
 }

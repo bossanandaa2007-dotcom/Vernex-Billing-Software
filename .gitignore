@@ -22,3 +22,6 @@ coverage/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Stray Windows PowerShell cache
+Microsoft/
