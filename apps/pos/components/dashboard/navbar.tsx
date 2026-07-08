@@ -4,20 +4,16 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { NAVBAR_ITEMS } from '@/constant/navbarMenu';
 import { cn } from '@/lib/utils';
-import { getAuthContext } from '@/lib/client-data';
+import { useBusinessAccess } from '@/hooks/use-business-access';
 
 function Navbar({ collapsed = false }: { collapsed?: boolean }) {
   const pathname = usePathname();
-  const [role, setRole] = useState<string | null>(null);
-
-  useEffect(() => {
-    getAuthContext()
-      .then((data) => setRole(data?.user?.role ?? null))
-      .catch(() => setRole(null));
-  }, []);
+  const { role, enabledModules } = useBusinessAccess();
 
   const items = role
-    ? NAVBAR_ITEMS.filter((item) => !item.roles || item.roles.includes(role as any))
+    ? NAVBAR_ITEMS.filter((item) =>
+        enabledModules.includes(item.moduleKey) &&
+        (!item.roles || item.roles.includes(role as any)))
     : [];
 
   return (

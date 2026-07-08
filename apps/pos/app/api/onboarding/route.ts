@@ -1,8 +1,7 @@
-import { authErrorResponse, requireAuth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { TaxMode } from '@prisma/client';
+import { TaxMode } from '@/src/types/domain';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { createServerClient } from '@/src/lib/supabase/server';
 
 const schema = z.object({
   businessName: z.string().trim().min(2),
@@ -15,60 +14,21 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const ctx = await requireAuth(request);
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-    const trialStartedAt = new Date();
-    const trialEndsAt = new Date(trialStartedAt);
-    trialEndsAt.setDate(trialEndsAt.getDate() + 14);
-
-    const result = await db.$transaction(async (tx) => {
-      const business = await tx.business.create({
-        data: {
-          name: parsed.data.businessName,
-          country: parsed.data.country,
-          currency: parsed.data.currency,
-          taxMode: parsed.data.taxMode,
-          ownerUserId: ctx.authUserId,
-          trialStartedAt,
-          trialEndsAt,
-          subscriptionStatus: 'TRIAL',
-          planName: 'Free Trial',
-        },
-      });
-      const owner = await tx.staffProfile.create({
-        data: {
-          authUserId: `${ctx.authUserId}-${business.id}`,
-          businessId: business.id,
-          name: parsed.data.ownerName,
-          email: ctx.email,
-          phone: parsed.data.phone || null,
-          role: 'OWNER',
-          status: 'ACTIVE',
-        },
-      });
-      const shopData = await tx.shopData.create({
-        data: {
-          businessId: business.id,
-          name: parsed.data.businessName,
-          country: parsed.data.country,
-          currency: parsed.data.currency,
-          taxMode: parsed.data.taxMode,
-          phone: parsed.data.phone || null,
-        },
-      });
-      await tx.billSequence.upsert({
-        where: { id: business.id },
-        create: { id: business.id, businessId: business.id, nextNumber: 1 },
-        update: { businessId: business.id },
-      });
-      return { business, owner, shopData };
+    const supabase = await createServerClient(request);
+    const { data: result, error } = await supabase.rpc('onboard_business', {
+      p_business_name: parsed.data.businessName,
+      p_owner_name: parsed.data.ownerName,
+      p_phone: parsed.data.phone ?? '',
+      p_country: parsed.data.country,
+      p_currency: parsed.data.currency,
+      p_tax_mode: parsed.data.taxMode,
     });
+    if (error) throw error;
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    const response = authErrorResponse(error);
-    if (response) return response;
     return NextResponse.json({ error: 'Unable to complete account setup. Please try again.' }, { status: 400 });
   }
 }

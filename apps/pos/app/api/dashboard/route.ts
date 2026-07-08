@@ -1,6 +1,6 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { authErrorResponse, requirePermission } from '@/lib/auth';
+import { createServerClient } from '@/src/lib/supabase/server';
 
 const cache = new Map<string, { expires: number; data: unknown }>();
 const TTL_MS = 30_000;
@@ -39,66 +39,58 @@ export async function GET(request: Request) {
   const { start, end } = getDateRange(period);
 
   try {
-    const [totalProducts, lowStockItems, todayBills, revenue, refunds, sold, shop, pendingCredit, paymentGroups, topProducts, activeCustomers] = await Promise.all([
-      db.product.count({ where: { productstock: { businessId: ctx.businessId } } }),
-      db.productStock.count({ where: { businessId: ctx.businessId, Product: { some: {} }, stock: { lte: 10 } } }),
-      db.transaction.count({ where: { businessId: ctx.businessId, isComplete: true, completedAt: { gte: start, lt: end } } }),
-      db.transaction.aggregate({
-        where: { businessId: ctx.businessId, isComplete: true, completedAt: { gte: start, lt: end } },
-        _sum: { totalAmount: true },
-      }),
-      db.saleReturn.aggregate({ where: { businessId: ctx.businessId, createdAt: { gte: start, lt: end } }, _sum: { refundAmount: true }, _count: true }),
-      db.onSaleProduct.aggregate({
-        where: { transaction: { businessId: ctx.businessId, isComplete: true, completedAt: { gte: start, lt: end } } },
-        _sum: { quantity: true },
-      }),
-      db.shopData.findFirst({ where: { businessId: ctx.businessId } }),
-      db.transaction.aggregate({ where: { businessId: ctx.businessId, isComplete: true, paymentStatus: { in: ['PENDING', 'PARTIAL'] } }, _sum: { totalAmount: true, amountReceived: true } }),
-      db.transaction.groupBy({
-        by: ['paymentMethod'],
-        where: { businessId: ctx.businessId, isComplete: true, completedAt: { gte: start, lt: end } },
-        _sum: { totalAmount: true },
-      }),
-      db.onSaleProduct.groupBy({
-        by: ['productName'],
-        where: { transaction: { businessId: ctx.businessId, isComplete: true, completedAt: { gte: start, lt: end } } },
-        _sum: { quantity: true },
-        orderBy: { _sum: { quantity: 'desc' } },
-        take: 1,
-      }),
-      db.customer.count({ where: { businessId: ctx.businessId, isActive: true } }),
+    const supabase = await createServerClient(request);
+    const [products, sales, refunds, shop, creditSales, saleLines, customers] = await Promise.all([
+      supabase.from('ProductStock').select('id,stock,Product!inner(id)', { count: 'exact' }).eq('businessId', ctx.businessId),
+      supabase.from('Transaction').select('id,totalAmount,paymentMethod,completedAt', { count: 'exact' })
+        .eq('businessId', ctx.businessId).eq('isComplete', true)
+        .gte('completedAt', start.toISOString()).lt('completedAt', end.toISOString()),
+      supabase.from('SaleReturn').select('refundAmount', { count: 'exact' }).eq('businessId', ctx.businessId)
+        .gte('createdAt', start.toISOString()).lt('createdAt', end.toISOString()),
+      supabase.from('ShopData').select('currency').eq('businessId', ctx.businessId).maybeSingle(),
+      supabase.from('Transaction').select('totalAmount,amountReceived').eq('businessId', ctx.businessId)
+        .eq('isComplete', true).in('paymentStatus', ['PENDING', 'PARTIAL']),
+      supabase.from('OnSaleProduct').select('quantity,productName,transaction:Transaction!inner(businessId,isComplete,completedAt)')
+        .eq('transaction.businessId', ctx.businessId).eq('transaction.isComplete', true)
+        .gte('transaction.completedAt', start.toISOString()).lt('transaction.completedAt', end.toISOString()),
+      supabase.from('Customer').select('id', { count: 'exact', head: true }).eq('businessId', ctx.businessId).eq('isActive', true),
     ]);
-
-    const todayRevenue = Number(revenue._sum.totalAmount ?? 0);
-    const refundTotalToday = Number(refunds._sum.refundAmount ?? 0);
-    const paymentTotals = paymentGroups.reduce<Record<string, number>>((acc, item) => {
-      if (item.paymentMethod) acc[item.paymentMethod] = Number(item._sum.totalAmount ?? 0);
+    const productRows = products.data ?? [];
+    const salesRows = sales.data ?? [];
+    const refundRows = refunds.data ?? [];
+    const lineRows = saleLines.data ?? [];
+    const todayRevenue = salesRows.reduce((sum, sale) => sum + Number(sale.totalAmount ?? 0), 0);
+    const refundTotalToday = refundRows.reduce((sum, item) => sum + Number(item.refundAmount), 0);
+    const paymentTotals = salesRows.reduce<Record<string, number>>((acc, item) => {
+      if (item.paymentMethod) acc[item.paymentMethod] = (acc[item.paymentMethod] ?? 0) + Number(item.totalAmount ?? 0);
       return acc;
     }, {});
+    const productsSold = new Map<string, number>();
+    lineRows.forEach((line) => productsSold.set(line.productName, (productsSold.get(line.productName) ?? 0) + line.quantity));
+    const topProduct = [...productsSold.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
     const data = {
-      totalProducts,
-      lowStockItems,
-      todayBills,
+      totalProducts: products.count ?? productRows.length,
+      lowStockItems: productRows.filter((item) => item.stock <= 10).length,
+      todayBills: sales.count ?? salesRows.length,
       todayRevenue,
       netRevenueToday: todayRevenue - refundTotalToday,
-      returnsToday: refunds._count,
+      returnsToday: refunds.count ?? refundRows.length,
       refundTotalToday,
       cashSales: paymentTotals.CASH ?? 0,
       upiSales: paymentTotals.UPI ?? 0,
       cardSales: paymentTotals.CARD ?? 0,
       creditSales: paymentTotals.CREDIT ?? 0,
       onlineSales: paymentTotals.ONLINE ?? 0,
-      pendingCredit: Number(pendingCredit._sum.totalAmount ?? 0) - Number(pendingCredit._sum.amountReceived ?? 0),
-      itemsSold: sold._sum.quantity ?? 0,
-      topSellingProduct: topProducts[0]?.productName || 'No sales yet',
-      activeCustomers,
-      currency: shop?.currency ?? 'INR',
+      pendingCredit: (creditSales.data ?? []).reduce((sum, sale) => sum + Number(sale.totalAmount ?? 0) - Number(sale.amountReceived), 0),
+      itemsSold: lineRows.reduce((sum, line) => sum + line.quantity, 0),
+      topSellingProduct: topProduct || 'No sales yet',
+      activeCustomers: customers.count ?? 0,
+      currency: shop.data?.currency ?? 'INR',
       period,
     };
     cache.set(cacheKey, { expires: Date.now() + TTL_MS, data });
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Dashboard query failed:', error);
     const unavailable = authErrorResponse(error);
     if (unavailable) return unavailable;
     return NextResponse.json({ error: 'Unable to load dashboard.' }, { status: 500 });

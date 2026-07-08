@@ -1,6 +1,6 @@
-import { SubscriptionStatus } from '@prisma/client';
+import { SubscriptionStatus } from '@/src/types/domain';
 import { AuthError, CurrentUserContext } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createServerClient } from '@/src/lib/supabase/server';
 
 export type BusinessSubscriptionStatus = {
   businessId: string;
@@ -19,10 +19,11 @@ export type BusinessSubscriptionStatus = {
 const daysBetween = (from: Date, to: Date) => Math.max(0, Math.ceil((to.getTime() - from.getTime()) / 86_400_000));
 
 export async function getBusinessSubscriptionStatus(businessId: string): Promise<BusinessSubscriptionStatus> {
-  const business = await db.business.findUnique({ where: { id: businessId } });
+  const supabase = await createServerClient();
+  const { data: business } = await supabase.from('Business').select('*').eq('id', businessId).maybeSingle();
   if (!business) throw new AuthError('Business account not found.', 403);
   const now = new Date();
-  const trialEndsAt = business.trialEndsAt;
+  const trialEndsAt = business.trialEndsAt ? new Date(business.trialEndsAt) : null;
   const trialStillInWindow = !!trialEndsAt && trialEndsAt >= now;
   const isTrialActive = business.subscriptionStatus === 'TRIAL' && trialStillInWindow;
   const isTrialExpired = business.subscriptionStatus === 'EXPIRED' || (business.subscriptionStatus === 'TRIAL' && !!trialEndsAt && trialEndsAt < now);
@@ -31,10 +32,10 @@ export async function getBusinessSubscriptionStatus(businessId: string): Promise
     businessId,
     status: isTrialExpired && business.subscriptionStatus === 'TRIAL' ? 'EXPIRED' : business.subscriptionStatus,
     planName: business.planName,
-    trialStartedAt: business.trialStartedAt,
+    trialStartedAt: business.trialStartedAt ? new Date(business.trialStartedAt) : null,
     trialEndsAt,
-    activatedAt: business.activatedAt,
-    suspendedAt: business.suspendedAt,
+    activatedAt: business.activatedAt ? new Date(business.activatedAt) : null,
+    suspendedAt: business.suspendedAt ? new Date(business.suspendedAt) : null,
     daysRemaining: trialEndsAt ? daysBetween(now, trialEndsAt) : 0,
     isTrialActive,
     isTrialExpired,

@@ -21,9 +21,9 @@ import {
 } from 'lucide-react';
 import { LoadingState } from '@/components/ui/loading-state';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useBusinessAccess } from '@/hooks/use-business-access';
 
 const reportTypes = ['sales', 'payments', 'products', 'customers', 'returns'] as const;
-const loadTypes = ['sales', 'payments', 'products', 'customers', 'returns'] as const;
 const presets = [
   ['today', 'Today'],
   ['yesterday', 'Yesterday'],
@@ -40,6 +40,14 @@ export function ReportsDashboard() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const { enabledModules } = useBusinessAccess();
+  const availableReportTypes = useMemo(() => reportTypes.filter((type) =>
+    type === 'sales' ||
+    (type === 'payments' && enabledModules?.includes('finance')) ||
+    (type === 'products' && enabledModules?.includes('products')) ||
+    (type === 'customers' && enabledModules?.includes('customers')) ||
+    (type === 'returns' && enabledModules?.includes('returns_refunds'))
+  ), [enabledModules]);
 
   const query = useMemo(() => {
     const params = new URLSearchParams({ preset });
@@ -51,10 +59,15 @@ export function ReportsDashboard() {
   }, [preset, from, to]);
 
   useEffect(() => {
+    if (!enabledModules.length) {
+      setReports({});
+      setLoading(false);
+      return;
+    }
     setError('');
     setLoading(true);
     Promise.all(
-      loadTypes.map((type) =>
+      availableReportTypes.map((type) =>
         fetch(`/api/reports/${type}?${query}`).then(async (res) => {
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || `Unable to load ${type} report.`);
@@ -65,7 +78,7 @@ export function ReportsDashboard() {
       .then((entries) => setReports(Object.fromEntries(entries)))
       .catch(() => setError('Unable to load reports. Please check your connection and try again.'))
       .finally(() => setLoading(false));
-  }, [query, refreshKey]);
+  }, [query, refreshKey, enabledModules, availableReportTypes]);
 
   const currency = reports.sales?.currency ?? 'INR';
   const paymentMethods = reports.payments?.country === 'India' ? ['CASH', 'UPI', 'CARD', 'CREDIT'] : ['CASH', 'CARD', 'ONLINE', 'CREDIT'];
@@ -143,7 +156,7 @@ export function ReportsDashboard() {
               )}
             </div>
             <div className="flex flex-wrap gap-2">
-              {reportTypes.map((type) => (
+              {availableReportTypes.map((type) => (
                 <Button key={type} variant="outline" asChild size="sm" className="rounded-xl">
                   <a href={exportHref(type)}>
                     <ArrowDownToLine className="mr-2 h-4 w-4" />
@@ -158,32 +171,32 @@ export function ReportsDashboard() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Metric icon={<TrendingUp />} label="Sales Overview" value={formatMoney(reports.sales?.summary?.netTotal, currency)} sub={`${reports.sales?.summary?.billCount ?? 0} completed bills`} tone="emerald" />
-        <Metric icon={<WalletCards />} label="Payment Collection" value={formatMoney(reports.payments?.netCollection, currency)} sub={`Refunds ${formatMoney(reports.payments?.refundTotal, currency)}`} tone="blue" />
-        <Metric icon={<Package />} label="Top Product" value={reports.products?.topProduct?.productName ?? 'No sales'} sub={`${reports.products?.topProduct?.quantitySold ?? 0} sold`} tone="amber" />
-        <Metric icon={<Users />} label="Credit Pending" value={formatMoney(reports.customers?.summary?.pendingCredit, currency)} sub={`${reports.customers?.summary?.creditCustomers ?? 0} credit customers`} tone="rose" />
+        {enabledModules?.includes('finance') && <Metric icon={<WalletCards />} label="Payment Collection" value={formatMoney(reports.payments?.netCollection, currency)} sub={`Refunds ${formatMoney(reports.payments?.refundTotal, currency)}`} tone="blue" />}
+        {enabledModules?.includes('products') && <Metric icon={<Package />} label="Top Product" value={reports.products?.topProduct?.productName ?? 'No sales'} sub={`${reports.products?.topProduct?.quantitySold ?? 0} sold`} tone="amber" />}
+        {enabledModules?.includes('customers') && <Metric icon={<Users />} label="Credit Pending" value={formatMoney(reports.customers?.summary?.pendingCredit, currency)} sub={`${reports.customers?.summary?.creditCustomers ?? 0} credit customers`} tone="rose" />}
       </div>
 
-      <Section title="Payment Collection" icon={<Banknote className="h-5 w-5" />}>
+      {enabledModules?.includes('finance') && <Section title="Payment Collection" icon={<Banknote className="h-5 w-5" />}>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {paymentMethods.map((method) => (
             <PaymentTile key={method} label={method} value={formatMoney(reports.payments?.totals?.[method], currency)} />
           ))}
         </div>
-      </Section>
+      </Section>}
 
       <div className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-        <Section title="Product Report" icon={<Package className="h-5 w-5" />}>
+        {enabledModules?.includes('products') && <Section title="Product Report" icon={<Package className="h-5 w-5" />}>
           <SimpleTable headers={['Product', 'Qty Sold', 'Revenue', 'Returned']} rows={(reports.products?.products ?? []).slice(0, 8).map((item: any) => [item.productName, item.quantitySold, formatMoney(item.revenue, currency), item.returnedQuantity])} />
-        </Section>
+        </Section>}
 
-        <Section title="Customer Report" icon={<Users className="h-5 w-5" />}>
+        {enabledModules?.includes('customers') && <Section title="Customer Report" icon={<Users className="h-5 w-5" />}>
           <SimpleTable compact headers={['Customer', 'Bills', 'Spent']} rows={(reports.customers?.customers ?? []).slice(0, 8).map((item: any) => [item.name, item.billCount, formatMoney(item.totalSpent, currency)])} />
-        </Section>
+        </Section>}
       </div>
 
-      <Section title="Returns Report" icon={<RotateCcw className="h-5 w-5" />}>
+      {enabledModules?.includes('returns_refunds') && <Section title="Returns Report" icon={<RotateCcw className="h-5 w-5" />}>
         <SimpleTable headers={['Bill', 'Refund', 'Method', 'Items']} rows={(reports.returns?.returns ?? []).slice(0, 8).map((item: any) => [item.originalBillNumber, formatMoney(item.refundAmount, currency), item.refundMethod, item.itemCount])} />
-      </Section>
+      </Section>}
     </div>
   );
 }

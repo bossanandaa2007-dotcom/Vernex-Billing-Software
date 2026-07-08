@@ -20,6 +20,7 @@ export type AdminUser = {
   id: string;
   businessId: string;
   businessName: string;
+  userId: string | null;
   name: string;
   email: string;
   phone: string | null;

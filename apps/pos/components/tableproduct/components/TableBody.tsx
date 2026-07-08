@@ -2,7 +2,6 @@
 import { TableBody, TableCell, TableRow } from '@/components/ui/table';
 import Dropdown from './btn/Dropdown';
 import { Badge } from '@/components/ui/badge';
-import { CatProduct } from '@prisma/client';
 import SkeletonRow from '@/components/skeleton/products';
 import { useState, useEffect } from 'react';
 import { formatMoney } from '@/lib/currency';
@@ -14,7 +13,7 @@ interface ProductData {
   productstock: {
     id: string;
     name: string;
-    cat: CatProduct;
+    cat: string;
     stock: number;
     price: number;
   };

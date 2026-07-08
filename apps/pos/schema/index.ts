@@ -1,9 +1,8 @@
 import * as z from 'zod';
 
-import { CatProduct } from '@prisma/client';
-
-const categoryValidator = (val: string): val is CatProduct =>
-  Object.values(CatProduct).includes(val as CatProduct);
+// Products no longer track stock; they are always sellable. A large default keeps
+// the required ProductStock.stock column satisfied without a stock-management UI.
+const UNLIMITED_STOCK = 1_000_000;
 
 export const productSchema = z
   .object({
@@ -19,16 +18,14 @@ export const productSchema = z
       .nonnegative('Sell price cannot be negative'),
     stockProduct: z
       .number()
-      .nonnegative('Stock cannot be negative'),
+      .nonnegative('Stock cannot be negative')
+      .optional()
+      .default(UNLIMITED_STOCK),
     category: z
       .string()
+      .trim()
       .min(1, 'Category cannot be empty')
-      .refine(categoryValidator, {
-        message: 'Select category',
-        params: {
-          validValues: Object.values(CatProduct).join(', '),
-        },
-      }),
+      .max(40, 'Category must be 40 characters or fewer'),
   });
 export const onsaleSchema = z.object({
   productId: z.string().min(1, 'Select Product'),

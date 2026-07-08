@@ -1,10 +1,10 @@
-import { db } from '@/lib/db';
 import { productSchema } from '@/schema';
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { authErrorResponse } from '@/lib/auth';
 import { requirePaidFeature } from '@/lib/guards';
 import { writeAuditLog } from '@/lib/audit';
+import { createServerClient } from '@/src/lib/supabase/server';
 
 export async function POST(request: Request) {
   let ctx;
@@ -24,22 +24,33 @@ export async function POST(request: Request) {
   const id = `PRD-${randomUUID().slice(0, 8)}`;
 
   try {
-    const product = await db.productStock.create({
-      data: {
+    const supabase = await createServerClient(request);
+    const { data: stock, error: stockError } = await supabase
+      .from('ProductStock')
+      .insert({
         id,
         businessId: ctx.businessId,
         name: productName.trim(),
         stock: stockProduct,
         price: buyPrice,
         cat: category,
-        Product: { create: { sellprice: sellPrice } },
-      },
-      include: { Product: true },
-    });
+      })
+      .select('*')
+      .single();
+    if (stockError) throw stockError;
+    const { data: saleProduct, error: productError } = await supabase
+      .from('Product')
+      .insert({ productId: id, sellprice: sellPrice })
+      .select('*')
+      .single();
+    if (productError) {
+      await supabase.from('ProductStock').delete().eq('id', id);
+      throw productError;
+    }
+    const product = { ...stock, Product: [saleProduct] };
     await writeAuditLog(ctx, { action: 'PRODUCT_CREATED', entityType: 'ProductStock', entityId: product.id, description: `Created product ${product.name}` });
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
-    console.error('Create product failed:', error);
     return NextResponse.json({ error: 'Unable to create product.' }, { status: 500 });
   }
 }

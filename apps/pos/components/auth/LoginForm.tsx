@@ -52,7 +52,7 @@ export function LoginForm() {
   const login = async (event: FormEvent) => {
     event.preventDefault();
     if (!userId.trim()) {
-      setMessage('User ID is required.');
+      setMessage('User ID or email is required.');
       return;
     }
     if (!password) {
@@ -226,8 +226,8 @@ export function LoginForm() {
       {mode === 'sign-in' && (
         <form className="space-y-4" onSubmit={login}>
           <div className="space-y-2">
-            <Label htmlFor="login-user-id">User ID</Label>
-            <Input id="login-user-id" placeholder="Enter your User ID" type="text" value={userId} onChange={(e) => setUserId(e.target.value)} autoComplete="username" disabled={loading} autoFocus />
+            <Label htmlFor="login-user-id">User ID or email</Label>
+            <Input id="login-user-id" placeholder="Enter your User ID or email" type="text" value={userId} onChange={(e) => setUserId(e.target.value)} autoComplete="username" disabled={loading} autoFocus />
           </div>
           <div className="space-y-2">
             <Label htmlFor="login-password">Password</Label>

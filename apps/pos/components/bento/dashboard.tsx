@@ -8,6 +8,7 @@ import { formatMoney } from '@/lib/currency';
 import { getTotal } from '@/data/stock';
 import type { DashboardPeriod } from '@/data/stock';
 import { cn } from '@/lib/utils';
+import { useBusinessAccess } from '@/hooks/use-business-access';
 
 const empty = {
   totalProducts: 0,
@@ -51,6 +52,7 @@ export function Dashboard() {
   const [error, setError] = useState('');
   const [view, setView] = useState<ViewMode>('overview');
   const [period, setPeriod] = useState<DashboardPeriod>('today');
+  const { enabledModules } = useBusinessAccess();
   const activePeriod = periodOptions.find((item) => item.value === period) ?? periodOptions[0];
 
   const load = useCallback(async () => {
@@ -68,7 +70,6 @@ export function Dashboard() {
   }, [period]);
 
   useEffect(() => { load(); }, [load]);
-
   const paymentRows = useMemo(() => [
     { label: 'Cash', value: data.cashSales, icon: Banknote, color: 'bg-emerald-500' },
     { label: 'UPI', value: data.upiSales, icon: IndianRupee, color: 'bg-sky-500' },
@@ -82,8 +83,8 @@ export function Dashboard() {
   const kpis = [
     { label: 'Net Revenue', value: formatMoney(data.netRevenueToday, data.currency), detail: `${formatMoney(data.todayRevenue, data.currency)} gross`, icon: IndianRupee },
     { label: `Bills ${activePeriod.shortLabel}`, value: data.todayBills.toString(), detail: `${data.itemsSold} items sold`, icon: ReceiptText },
-    { label: 'Pending Credit', value: formatMoney(data.pendingCredit, data.currency), detail: 'Open receivables', icon: CreditCard },
-    { label: 'Active Customers', value: data.activeCustomers.toString(), detail: `${data.totalProducts} products listed`, icon: Users },
+    ...(enabledModules.includes('credit_sales') ? [{ label: 'Pending Credit', value: formatMoney(data.pendingCredit, data.currency), detail: 'Open receivables', icon: CreditCard }] : []),
+    ...(enabledModules.includes('customers') ? [{ label: 'Active Customers', value: data.activeCustomers.toString(), detail: enabledModules.includes('products') ? `${data.totalProducts} products listed` : 'Customer accounts', icon: Users }] : []),
   ];
 
   return (
@@ -120,7 +121,7 @@ export function Dashboard() {
                 </button>
               ))}
             </div>
-            {viewModes.map((item) => (
+            {viewModes.filter((item) => item.value !== 'payments' || enabledModules.includes('finance')).map((item) => (
               <Button className="min-h-11 flex-1 sm:min-h-9 sm:flex-none" key={item.value} size="sm" variant={view === item.value ? 'default' : 'outline'} onClick={() => setView(item.value)}>
                 {item.label}
               </Button>
@@ -154,13 +155,13 @@ export function Dashboard() {
                 <h3 className="text-lg font-semibold text-vernex-navy dark:text-white">Sales Flow</h3>
                 <p className="text-sm text-vernex-muted dark:text-slate-300">A quick read on money, bills, and returns for {activePeriod.shortLabel.toLowerCase()}.</p>
               </div>
-              <Button asChild variant="outline" size="sm" className="min-h-11 w-full sm:min-h-9 sm:w-auto">
+              {enabledModules.includes('pos_billing') && <Button asChild variant="outline" size="sm" className="min-h-11 w-full sm:min-h-9 sm:w-auto">
                 <Link href="/orders">Open POS <ArrowRight className="ml-2 h-4 w-4" /></Link>
-              </Button>
+              </Button>}
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-3">
               <MetricPanel label="Gross Revenue" value={formatMoney(data.todayRevenue, data.currency)} />
-              <MetricPanel label={`Refunds ${activePeriod.shortLabel}`} value={`${data.returnsToday} / ${formatMoney(data.refundTotalToday, data.currency)}`} />
+              {enabledModules.includes('returns_refunds') && <MetricPanel label={`Refunds ${activePeriod.shortLabel}`} value={`${data.returnsToday} / ${formatMoney(data.refundTotalToday, data.currency)}`} />}
               <MetricPanel label="Top Product" value={data.topSellingProduct} />
             </div>
           </div>
@@ -168,9 +169,9 @@ export function Dashboard() {
           <div className="rounded-xl border border-vernex-border bg-white p-5 shadow-sm dark:border-[#1E335F] dark:bg-vernex-navy">
             <h3 className="text-lg font-semibold text-vernex-navy dark:text-white">Quick Actions</h3>
             <div className="mt-4 grid gap-2">
-              <QuickLink href="/orders" icon={ShoppingCart} label="Start Billing" />
-              <QuickLink href="/records" icon={ReceiptText} label="Review Sales" />
-              <QuickLink href="/product" icon={Boxes} label="Manage Products" />
+              {enabledModules.includes('pos_billing') && <QuickLink href="/orders" icon={ShoppingCart} label="Start Billing" />}
+              {enabledModules.includes('sales_records') && <QuickLink href="/records" icon={ReceiptText} label="Review Sales" />}
+              {enabledModules.includes('products') && <QuickLink href="/product" icon={Boxes} label="Manage Products" />}
             </div>
           </div>
         </div>
@@ -212,8 +213,8 @@ export function Dashboard() {
             value={isOperational ? 'Billing routes ready' : 'Dashboard refresh failed'}
             tone={isOperational ? 'good' : 'warn'}
           />
-          <AttentionCard icon={AlertTriangle} title="Low Stock" value={`${data.lowStockItems} items need review`} tone={data.lowStockItems ? 'warn' : 'good'} />
-          <AttentionCard icon={RotateCcw} title="Returns" value={`${data.returnsToday} returns ${activePeriod.shortLabel.toLowerCase()}`} tone={data.returnsToday ? 'warn' : 'good'} />
+          {enabledModules.includes('inventory') && <AttentionCard icon={AlertTriangle} title="Low Stock" value={`${data.lowStockItems} items need review`} tone={data.lowStockItems ? 'warn' : 'good'} />}
+          {enabledModules.includes('returns_refunds') && <AttentionCard icon={RotateCcw} title="Returns" value={`${data.returnsToday} returns ${activePeriod.shortLabel.toLowerCase()}`} tone={data.returnsToday ? 'warn' : 'good'} />}
         </div>
       )}
     </section>

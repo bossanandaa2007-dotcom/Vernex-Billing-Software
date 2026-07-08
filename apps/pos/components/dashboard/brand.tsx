@@ -4,12 +4,12 @@ import Link from 'next/link';
 export function VernexBrand({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/home" className="flex items-center gap-3" aria-label="Vernex dashboard">
-      <span className="flex h-10 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1 shadow-sm">
+      <span className="flex h-12 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-sm">
         <Image
           src="/assets/vernex-logo.png"
           alt="Vernex logo"
-          width={48}
-          height={34}
+          width={56}
+          height={48}
           className="h-full w-full object-contain"
           priority
         />

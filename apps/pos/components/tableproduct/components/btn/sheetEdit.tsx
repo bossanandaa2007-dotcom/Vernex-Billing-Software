@@ -11,16 +11,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Cross2Icon, ReloadIcon } from '@radix-ui/react-icons';
 import { useEffect, useState } from 'react';
-import { CatProduct } from '@prisma/client';
 import { productSchema } from '@/schema';
 import { z } from 'zod';
 import axios from 'axios';
@@ -32,7 +24,7 @@ type Data = {
   productstock: {
     id: string;
     name: string;
-    cat: CatProduct;
+    cat: string;
     stock: number;
     price: number;
   };
@@ -53,32 +45,19 @@ export function SheetEdit({
   );
   const [sellPrice, setSellPrice] = useState(data.sellprice || '');
   const [buyPrice, setBuyPrice] = useState(data.productstock.price || '');
-  const [stockProduct, setStockProduct] = useState(
-    data.productstock.stock || ''
-  );
-  const [searchTerm, setSearchTerm] = useState<string>(
-    data.productstock.cat ?? ''
-  );
   const [error, setError] = useState<{ [key: string]: string }>({});
 
   const buyPriceNumber = parseFloat(String(buyPrice)) || 0;
-  const stockProductNumber = parseFloat(String(stockProduct)) || 0;
   const sellPriceNumber = parseFloat(String(sellPrice)) || 0;
 
-  const catProductValues = Object.values(CatProduct);
-  const filteredCatProducts = catProductValues.filter((product) =>
-    product.toLowerCase().includes(searchTerm.toLowerCase())
-  );
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     if (!open) {
       // Reset input value when sheet is closed
-      setSearchTerm(data.productstock.cat ?? '');
       setProductName(data.productstock.name || '');
       setSellPrice(data.sellprice || '');
-      setStockProduct(data.productstock.stock || '');
       setBuyPrice(data.productstock.price || '');
       setCategories(data.productstock.cat ?? '');
     }
@@ -86,7 +65,6 @@ export function SheetEdit({
     open,
     data.productstock.name,
     data.sellprice,
-    data.productstock.stock,
     data.productstock.cat,
     data.productstock.price,
   ]);
@@ -113,7 +91,6 @@ export function SheetEdit({
       productName === data.productstock.name &&
       buyPriceNumber === data.productstock.price &&
       sellPriceNumber === data.sellprice &&
-      stockProductNumber === data.productstock.stock &&
       categoryProduct === data.productstock.cat
     ) {
       toast.info('No changes made.');
@@ -127,7 +104,6 @@ export function SheetEdit({
         productName: productName,
         buyPrice: buyPriceNumber,
         sellPrice: sellPriceNumber,
-        stockProduct: stockProductNumber,
         category: categoryProduct,
       });
 
@@ -223,73 +199,24 @@ export function SheetEdit({
                 {error.sellPrice}
               </div>
             )}
-            <Label htmlFor="stockProduct" className="text-right">
-              Stock
-            </Label>
-            <Input
-              id="stockProduct"
-              value={stockProduct}
-              onChange={(e) => {
-                setStockProduct(e.target.value);
-                setError((prevError) => ({ ...prevError, stockProduct: '' }));
-              }}
-              className="col-span-3"
-              type="number"
-            />
-            {error?.stockProduct && (
-              <div className="col-start-2 col-span-3 text-red-500">
-                {error.stockProduct}
-              </div>
-            )}
             <Label htmlFor="categoryProduct" className="text-right">
               Category
             </Label>
-            <Select
+            <Input
+              id="categoryProduct"
               value={categoryProduct}
-              onValueChange={(newValue) => {
-                setCategories(newValue as CatProduct);
-                setError((prevError) => ({
-                  ...prevError,
-                  category: '',
-                }));
+              onChange={(e) => {
+                setCategories(e.target.value);
+                setError((prevError) => ({ ...prevError, category: '' }));
               }}
-            >
-              <SelectTrigger id="categoryProduct" className="w-full min-w-0 sm:min-w-max">
-                <SelectValue
-                  className="pr-20"
-                  placeholder={
-                    searchTerm
-                      ? searchTerm.charAt(0).toUpperCase() +
-                        searchTerm.slice(1).toLowerCase()
-                      : 'Select Category'
-                  }
-                  onClick={() => setSearchTerm('')}
-                />
-              </SelectTrigger>
-              {error?.category && (
-                <div className="col-start-2 col-span-3 text-red-500">
-                  {error.category}
-                </div>
-              )}
-              <SelectContent position="popper">
-                <input
-                  type="text"
-                  value={
-                    searchTerm.charAt(0).toUpperCase() +
-                    searchTerm.slice(1).toLowerCase()
-                  }
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search Category"
-                  style={{ padding: '5px', margin: '5px 0', width: '100%' }}
-                />
-                {filteredCatProducts.map((product) => (
-                  <SelectItem key={product} value={product}>
-                    {product.charAt(0).toUpperCase() +
-                      product.slice(1).toLowerCase()}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              className="col-span-3"
+              placeholder="Type a category (e.g. Snacks)"
+            />
+            {error?.category && (
+              <div className="col-start-2 col-span-3 text-red-500">
+                {error.category}
+              </div>
+            )}
           </div>
         </div>
         <SheetFooter>

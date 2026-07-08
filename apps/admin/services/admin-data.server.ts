@@ -134,10 +134,10 @@ export async function listUsers(search = '') {
   const supabase = await client();
   let query = supabase
     .from('StaffProfile')
-    .select('id,businessId,name,email,phone,role,status,lastLoginAt')
+    .select('id,businessId,userId,name,email,phone,role,status,lastLoginAt')
     .order('createdAt', { ascending: false })
     .limit(200);
-  if (search) query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`);
+  if (search) query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,userId.ilike.%${search}%`);
   const { data, error } = await query;
   ensure(error, 'Unable to load users.');
   const names = await businessNames([...new Set((data ?? []).map((item) => item.businessId as string))]);

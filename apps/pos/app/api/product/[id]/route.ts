@@ -1,9 +1,9 @@
-import { db } from '@/lib/db';
 import { productSchema } from '@/schema';
 import { NextResponse } from 'next/server';
 import { authErrorResponse } from '@/lib/auth';
 import { requirePaidFeature } from '@/lib/guards';
 import { writeAuditLog } from '@/lib/audit';
+import { createServerClient } from '@/src/lib/supabase/server';
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,23 +22,31 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const { productName, stockProduct, buyPrice, sellPrice, category } = parsed.data;
   try {
-    const product = await db.productStock.update({
-      where: { id, businessId: ctx.businessId },
-      data: {
+    const supabase = await createServerClient(request);
+    const { data: stock, error } = await supabase
+      .from('ProductStock')
+      .update({
         name: productName.trim(),
         stock: stockProduct,
         price: buyPrice,
         cat: category,
-        Product: {
-          update: { where: { productId: id }, data: { sellprice: sellPrice } },
-        },
-      },
-      include: { Product: true },
-    });
+      })
+      .eq('id', id)
+      .eq('businessId', ctx.businessId)
+      .select('*')
+      .single();
+    if (error) throw error;
+    const { data: saleProduct, error: priceError } = await supabase
+      .from('Product')
+      .update({ sellprice: sellPrice })
+      .eq('productId', id)
+      .select('*')
+      .single();
+    if (priceError) throw priceError;
+    const product = { ...stock, Product: [saleProduct] };
     await writeAuditLog(ctx, { action: 'PRODUCT_UPDATED', entityType: 'ProductStock', entityId: product.id, description: `Updated product ${product.name}` });
     return NextResponse.json(product);
   } catch (error) {
-    console.error('Update product failed:', error);
     return NextResponse.json({ error: 'Product not found or invalid.' }, { status: 404 });
   }
 }
@@ -54,7 +62,9 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     throw error;
   }
   try {
-    await db.productStock.delete({ where: { id, businessId: ctx.businessId } });
+    const supabase = await createServerClient(request);
+    const { error } = await supabase.from('ProductStock').delete().eq('id', id).eq('businessId', ctx.businessId);
+    if (error) throw error;
     await writeAuditLog(ctx, { action: 'PRODUCT_DELETED_OR_DEACTIVATED', entityType: 'ProductStock', entityId: id, description: `Deleted product ${id}` });
     return NextResponse.json({ success: true });
   } catch (error) {

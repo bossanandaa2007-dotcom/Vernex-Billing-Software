@@ -1,7 +1,6 @@
-import { db } from '@/lib/db';
 import { getCurrentUserContext } from '@/lib/auth';
 import isOnline from 'is-online';
-import { CatProduct } from '@prisma/client';
+import { createServerClient } from '@/src/lib/supabase/server';
 
 export const fetchProduct = async ({
   take = 5,
@@ -22,57 +21,29 @@ export const fetchProduct = async ({
     if (!isOnlineResult) return null;
 
   const ctx = await getCurrentUserContext();
-  const selectedCategory = Object.values(CatProduct).includes(category as CatProduct) ? category as CatProduct : undefined;
-  const productWhere = {
-    productstock: {
-      businessId: ctx.businessId,
-      ...(query ? { name: { contains: query, mode: 'insensitive' as const } } : {}),
-      ...(selectedCategory ? { cat: selectedCategory } : {}),
-    },
-  };
-  const [results, total, shop, categoryRows] = await Promise.all([
-    db.product.findMany({
-      where: productWhere,
-      skip,
-      take,
-      select: {
-        id: true,
-        productId: true,
-        sellprice: true,
-        productstock: {
-          select: {
-            id: true,
-            name: true,
-            imageProduct: true,
-            cat: true,
-            stock: true,
-            price: true,
-          },
-        },
-      },
-      orderBy: {
-        productstock: {
-          name: 'asc',
-        },
-      },
-    }),
-    db.product.count({
-      where: {
-        productstock: {
-          businessId: ctx.businessId,
-          ...(query ? { name: { contains: query, mode: 'insensitive' } } : {}),
-          ...(selectedCategory ? { cat: selectedCategory } : {}),
-        },
-      },
-    }),
-    db.shopData.findFirst({ where: { businessId: ctx.businessId } }),
-    db.productStock.findMany({
-      where: { businessId: ctx.businessId, Product: { some: {} } },
-      distinct: ['cat'],
-      select: { cat: true },
-      orderBy: { cat: 'asc' },
-    }),
+  const selectedCategory = category?.trim() ? category.trim() : undefined;
+  const supabase = await createServerClient();
+  let productsQuery = supabase
+    .from('Product')
+    .select('id, productId, sellprice, productstock:ProductStock!inner(id,name,imageProduct,cat,stock,price,businessId)', { count: 'exact' })
+    .eq('productstock.businessId', ctx.businessId)
+    .range(skip, skip + take - 1);
+  if (query) productsQuery = productsQuery.ilike('productstock.name', `%${query}%`);
+  if (selectedCategory) productsQuery = productsQuery.eq('productstock.cat', selectedCategory);
+  const [productsResult, shopResult, categoryResult] = await Promise.all([
+    productsQuery,
+    supabase.from('ShopData').select('currency').eq('businessId', ctx.businessId).maybeSingle(),
+    supabase.from('ProductStock').select('cat').eq('businessId', ctx.businessId).order('cat'),
   ]);
+  if (productsResult.error) throw productsResult.error;
+  const results = (productsResult.data ?? []).map((row) => ({
+    ...row,
+    productstock: Array.isArray(row.productstock) ? row.productstock[0] : row.productstock,
+  }));
+  const total = productsResult.count ?? 0;
+  const shop = shopResult.data;
+  const categoryRows = Array.from(new Set((categoryResult.data ?? []).map((item) => item.cat)))
+    .map((cat) => ({ cat }));
 
     return {
       data: results,
