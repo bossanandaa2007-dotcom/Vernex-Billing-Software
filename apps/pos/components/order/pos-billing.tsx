@@ -16,7 +16,6 @@ import { ReceiptItem, ReceiptSale, ReceiptShop } from '@/lib/receipt';
 import { TransactionData } from '@/types/transaction';
 import axios from 'axios';
 import {
-  Barcode,
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
@@ -359,16 +358,7 @@ export function PosBilling() {
       <section className="mx-auto w-full max-w-7xl space-y-4">
         <Card className="overflow-hidden border-vernex-border/80 shadow-sm">
           <CardHeader className="space-y-4 bg-white/80 pb-4 dark:bg-vernex-navy/60">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <PackageSearch className="h-5 w-5 text-vernex-gold" />
-                  Product Selection
-                </CardTitle>
-                <p className="mt-1 text-xs text-vernex-muted dark:text-slate-400">
-                  Search, scan, filter, and tap to add.
-                </p>
-              </div>
+            <div className="flex justify-end">
               <Button
                 variant="outline"
                 size="icon"
@@ -389,10 +379,9 @@ export function PosBilling() {
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') scanOrAddFirst();
                 }}
-                className="h-11 rounded-xl pl-9 pr-10"
-                placeholder="Search product, SKU, price, or scan barcode"
+                className="h-11 rounded-xl pl-9 pr-3"
+                placeholder="Search product, SKU, or price"
               />
-              <Barcode className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-vernex-gold" />
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <Select value={category} onValueChange={setCategory}>
@@ -405,9 +394,9 @@ export function PosBilling() {
               </Select>
             </div>
           </CardHeader>
-          <CardContent className="min-h-[520px] overflow-auto p-3 md:p-4">
+          <CardContent className="min-h-[520px] overflow-auto p-3 pb-40 md:p-4 md:pb-28">
             {loadingProducts ? <ProductSkeleton /> : filteredProducts.length ? (
-              <div className="grid gap-3 md:gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2.5 md:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
                 {filteredProducts.map((product) => {
               const price = product.Product[0]?.sellprice ?? 0;
               const out = product.stock <= 0;
@@ -418,28 +407,28 @@ export function PosBilling() {
                   type="button"
                   disabled={out || mutating}
                   onClick={() => addProduct(product.id)}
-                  className="group relative min-h-[132px] rounded-2xl border border-vernex-border bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 md:min-h-[170px] md:p-4 dark:border-[#1E335F] dark:bg-vernex-navy"
+                  className="group relative flex aspect-[0.92] min-h-0 flex-col rounded-xl border border-vernex-border bg-white p-2 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 md:aspect-auto md:min-h-[170px] md:rounded-2xl md:p-4 dark:border-[#1E335F] dark:bg-vernex-navy"
                 >
-                  <div className="flex gap-3 md:gap-4">
-                    <div className="relative grid h-[72px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-xl bg-vernex-surface md:h-24 md:w-24 dark:bg-vernex-dark">
+                  <div className="flex min-h-0 flex-1 flex-col gap-1.5 md:flex-row md:gap-4">
+                    <div className="relative grid h-10 w-full shrink-0 place-items-center overflow-hidden rounded-lg bg-vernex-surface md:h-24 md:w-24 md:rounded-xl dark:bg-vernex-dark">
                       {product.imageProduct ? (
                         <Image src={product.imageProduct} alt={product.name} fill className="object-cover" sizes="96px" />
                       ) : (
-                        <ShoppingBag className="h-7 w-7 text-emerald-600 md:h-8 md:w-8" />
+                        <ShoppingBag className="h-5 w-5 text-emerald-600 md:h-8 md:w-8" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="line-clamp-2 font-bold text-vernex-text dark:text-white">{product.name}</div>
+                      <div className="line-clamp-2 text-xs font-bold leading-snug text-vernex-text md:text-base dark:text-white">{product.name}</div>
                       <div className="mt-1 hidden text-xs text-vernex-muted md:block dark:text-slate-400">SKU: {product.id}</div>
-                      <div className="mt-2 font-black text-vernex-navy md:mt-3 dark:text-vernex-gold">{formatMoney(price, currency)}</div>
+                      <div className="mt-0.5 text-sm font-black leading-tight text-vernex-navy md:mt-3 md:text-base dark:text-vernex-gold">{formatMoney(price, currency)}</div>
                     </div>
                   </div>
-                  <div className="mt-2 flex items-center justify-between gap-3 md:mt-4">
-                      <Badge variant={out ? 'destructive' : low ? 'secondary' : 'outline'} className="rounded-full">
+                  <div className="mt-1.5 flex items-center justify-between gap-2 md:mt-4 md:gap-3">
+                      <Badge variant={out ? 'destructive' : low ? 'secondary' : 'outline'} className="max-w-[76px] truncate rounded-full px-1.5 text-[9px] leading-4 md:max-w-none md:px-2.5 md:text-xs">
                         {out ? 'Out of stock' : low ? 'Low stock' : product.cat}
                       </Badge>
-                    <span className="grid h-11 w-11 place-items-center rounded-lg bg-emerald-600 text-white shadow-sm transition group-hover:bg-emerald-700 md:h-9 md:w-9">
-                      <Plus className="h-5 w-5" />
+                    <span className="absolute bottom-2 right-2 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-600 text-white shadow-sm transition group-hover:bg-emerald-700 md:static md:h-9 md:w-9">
+                      <Plus className="h-4 w-4 md:h-5 md:w-5" />
                     </span>
                   </div>
                 </button>

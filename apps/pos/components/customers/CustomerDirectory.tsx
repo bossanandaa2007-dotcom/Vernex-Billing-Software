@@ -131,12 +131,7 @@ export function CustomerDirectory() {
         <CardContent className="space-y-4 p-5">
           <Field label="Name" required><Input ref={nameRef} value={form.name} onChange={(event) => updateField('name', event.target.value)} autoComplete="name" /></Field>
           <Field label="Phone" required><Input value={form.phone} onChange={(event) => updateField('phone', event.target.value)} autoComplete="tel" /></Field>
-          <Field label="Email"><Input type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} autoComplete="email" /></Field>
           <Field label="Address"><Input value={form.address} onChange={(event) => updateField('address', event.target.value)} autoComplete="street-address" /></Field>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-            <Field label="GSTIN / Tax ID"><Input value={form.taxId} onChange={(event) => updateField('taxId', event.target.value)} /></Field>
-            <Field label="Country"><Input value={form.country} onChange={(event) => updateField('country', event.target.value)} autoComplete="country-name" /></Field>
-          </div>
           <Field label="Notes"><Input value={form.notes} onChange={(event) => updateField('notes', event.target.value)} /></Field>
           <div className="flex gap-2 pt-1">
             <Button className="min-w-32" onClick={save} disabled={isBlocked || saving}>
@@ -164,7 +159,7 @@ export function CustomerDirectory() {
               {customers.map((customer) => (
                 <article key={customer.id} className="rounded-xl border border-vernex-border p-4 transition hover:border-vernex-gold dark:border-[#1E335F]">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div><h3 className="font-semibold text-vernex-navy dark:text-white">{customer.name}</h3><p className="mt-1 text-sm text-vernex-muted dark:text-slate-300">{customer.phone}{customer.email ? ` · ${customer.email}` : ''}</p></div>
+                    <div><h3 className="font-semibold text-vernex-navy dark:text-white">{customer.name}</h3><p className="mt-1 text-sm text-vernex-muted dark:text-slate-300">{customer.phone}</p></div>
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" disabled={isBlocked || deactivating === customer.id} onClick={() => edit(customer)}>Edit</Button>
                       <Button size="sm" variant="outline" disabled={isBlocked || deactivating === customer.id} onClick={() => deactivate(customer.id)}>

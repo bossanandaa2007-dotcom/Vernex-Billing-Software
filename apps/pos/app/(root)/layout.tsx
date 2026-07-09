@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 interface RootLayoutProps {
   children: React.ReactNode;
 }
-import { Bell, ChevronsLeft, ChevronsRight, Menu, Search, Settings, Store } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, Menu, Search, Settings, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetTrigger } from '@/components/ui/sheet';
 import { ModeToggle } from '@/components/darkmode/darkmode';
@@ -147,11 +147,6 @@ const RootLayout = ({ children }: RootLayoutProps) => {
               <Store className="h-4 w-4 text-vernex-gold" />
               <span className="max-w-40 truncate">{storeName}</span>
             </div>
-            <Button variant="outline" size="icon" className="relative h-11 w-11 shrink-0 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white lg:border-vernex-border lg:bg-white lg:text-vernex-navy lg:hover:bg-vernex-surface dark:border-[#1E335F] dark:bg-vernex-navy dark:text-white">
-              <Bell className="h-4 w-4" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-vernex-gold" />
-              <span className="sr-only">Notifications</span>
-            </Button>
             <div className="hidden sm:block"><ModeToggle /></div>
             {enabledModules.includes('business_settings') && <Button variant="outline" size="icon" asChild className="h-11 w-11 shrink-0 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white lg:border-vernex-border lg:bg-white lg:text-vernex-navy lg:hover:bg-vernex-surface dark:border-[#1E335F] dark:bg-vernex-navy dark:text-white">
               <Link href="/settings">

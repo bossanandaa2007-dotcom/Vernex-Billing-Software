@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Table } from '@/components/ui/table';
 import TableHeadRecords from './components/TableHead';
 import TableBodyRecords from './components/TableBody';
@@ -32,10 +32,10 @@ export async function Records(props: PageProps) {
   const visibleRevenue = data.reduce((sum, item) => sum + item.totalAmount, 0);
   const visibleItems = data.reduce((sum, item) => sum + item.itemCount, 0);
   const cardStats = [
-    { label: 'Visible revenue', value: formatMoney(visibleRevenue, currency), icon: CircleDollarSign },
-    { label: 'Transactions', value: metadata.totalTransactions.toString(), icon: ReceiptText },
-    { label: 'Items sold', value: visibleItems.toString(), icon: CalendarDays },
-    { label: 'Average bill', value: formatMoney(data.length ? visibleRevenue / data.length : 0, currency), icon: CreditCard },
+    { label: 'Visible revenue', shortLabel: 'Revenue', value: formatMoney(visibleRevenue, currency), icon: CircleDollarSign },
+    { label: 'Transactions', shortLabel: 'Bills', value: metadata.totalTransactions.toString(), icon: ReceiptText },
+    { label: 'Average bill', shortLabel: 'Avg', value: formatMoney(data.length ? visibleRevenue / data.length : 0, currency), icon: CreditCard },
+    { label: 'Items sold', shortLabel: 'Items', value: visibleItems.toString(), icon: CalendarDays },
   ];
   const filterHref = (value: RecordsPeriod) => {
     const params = new URLSearchParams();
@@ -48,11 +48,7 @@ export async function Records(props: PageProps) {
   return (
     <Card className="flex h-full flex-col overflow-hidden">
       <CardHeader className="border-b border-vernex-border bg-white dark:border-[#1E335F] dark:bg-vernex-navy">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <CardTitle>Transaction History</CardTitle>
-            <CardDescription>Completed sales only. Filter, search, open, and print transactions.</CardDescription>
-          </div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-end">
           <div className="flex flex-col gap-3 lg:min-w-[520px]">
             <div className="flex flex-wrap gap-2 lg:justify-end">
               {periodOptions.map((item) => (
@@ -72,19 +68,31 @@ export async function Records(props: PageProps) {
             <div className="relative"><SearchInput search={search} /></div>
           </div>
         </div>
-        <div className="grid gap-3 pt-4 sm:grid-cols-2 xl:grid-cols-4">
-          {cardStats.map((stat) => (
-            <div key={stat.label} className="rounded-xl border border-vernex-border bg-white/90 p-4 shadow-sm dark:border-[#1E335F] dark:bg-vernex-dark/80">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-semibold uppercase text-vernex-muted dark:text-slate-400">{stat.label}</p>
-                <stat.icon className="h-4 w-4 text-emerald-600 dark:text-vernex-gold" />
+        <div className="grid grid-cols-3 gap-2 pt-4 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4">
+          {cardStats.map((stat, index) => (
+            <div
+              key={stat.label}
+              className={`rounded-xl border border-vernex-border bg-white/90 shadow-sm dark:border-[#1E335F] dark:bg-vernex-dark/80 ${
+                index === 0
+                  ? 'col-span-3 p-3 sm:col-span-1 sm:p-4'
+                  : 'aspect-square p-2 sm:aspect-auto sm:p-4'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-1.5">
+                <p className="text-[9px] font-semibold uppercase leading-3 text-vernex-muted sm:text-xs sm:leading-4 dark:text-slate-400">
+                  <span className="sm:hidden">{stat.shortLabel}</span>
+                  <span className="hidden sm:inline">{stat.label}</span>
+                </p>
+                <stat.icon className="h-3.5 w-3.5 shrink-0 text-emerald-600 sm:h-4 sm:w-4 dark:text-vernex-gold" />
               </div>
-              <p className="mt-2 text-2xl font-black text-vernex-navy dark:text-white">{stat.value}</p>
+              <p className={`mt-2 font-black leading-tight text-vernex-navy dark:text-white ${
+                index === 0 ? 'text-2xl' : 'text-base sm:text-2xl'
+              }`}>{stat.value}</p>
             </div>
           ))}
         </div>
       </CardHeader>
-      <CardContent className="flex-grow overflow-x-auto p-4 sm:p-6">
+      <CardContent className="flex-grow overflow-x-auto p-4 pb-28 sm:p-6">
         <div className="mb-4 flex flex-col gap-2 rounded-xl border border-vernex-border bg-vernex-surface p-3 text-sm dark:border-[#1E335F] dark:bg-vernex-dark sm:flex-row sm:items-center sm:justify-between">
           <span className="font-semibold text-vernex-navy dark:text-white">
             Showing {data.length} of {metadata.totalTransactions} completed sales

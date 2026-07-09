@@ -33,6 +33,7 @@ export type ReceiptShop = {
   address?: string | null;
   taxId?: string | null;
   receiptFooter?: string | null;
+  receiptLogo?: string | null;
   country?: string;
   currency?: string;
   taxMode?: string;

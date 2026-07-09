@@ -82,7 +82,7 @@ export type Database = {
         currency: string; taxMode: TaxMode; phone: string | null; address: string | null;
         taxId: string | null; receiptFooter: string | null; billPrefix: string; billPadding: number;
         showBusinessLogo: boolean; showTaxId: boolean; showCustomerDetails: boolean;
-        showItemTax: boolean; showFooter: boolean; receiptSize: string;
+        showItemTax: boolean; showFooter: boolean; receiptSize: string; receiptLogo: string | null;
       }>;
       BillSequence: Table<{ id: string; businessId: string; nextNumber: number }>;
       AuditLog: Table<{

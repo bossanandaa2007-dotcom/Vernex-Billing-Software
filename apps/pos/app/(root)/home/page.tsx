@@ -11,10 +11,7 @@ export const metadata: Metadata = {
 const page = () => {
   return (
     <div className="w-full">
-      <PageHeading
-        title="Dashboard"
-        description="A clear view of today's billing activity and business performance."
-      />
+      <PageHeading title="Dashboard" />
       <ErrorBoundary>
         <Dashboard />
       </ErrorBoundary>

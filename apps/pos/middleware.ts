@@ -85,6 +85,27 @@ function noStore(response: NextResponse) {
   return response;
 }
 
+// Short-lived per-token access cache. Without it every page/API request pays
+// three sequential Supabase round-trips (user -> profile -> modules) before the
+// route even runs. Entries expire quickly so deactivations and module changes
+// still take effect within a minute.
+type AccessEntry = { businessId: string; enabled: Set<string>; expires: number };
+const accessCache = new Map<string, AccessEntry>();
+const ACCESS_CACHE_MS = 60_000;
+const ACCESS_CACHE_MAX = 500;
+
+function getCachedAccess(token: string) {
+  const entry = accessCache.get(token);
+  if (entry && entry.expires > Date.now()) return entry;
+  if (entry) accessCache.delete(token);
+  return null;
+}
+
+function setCachedAccess(token: string, entry: AccessEntry) {
+  if (accessCache.size >= ACCESS_CACHE_MAX) accessCache.clear();
+  accessCache.set(token, entry);
+}
+
 export async function middleware(request: NextRequest) {
   const moduleKeys = requiredModules(request);
   if (!moduleKeys.length) return noStore(NextResponse.next());
@@ -98,6 +119,13 @@ export async function middleware(request: NextRequest) {
     url.pathname = '/login';
     url.searchParams.set('next', request.nextUrl.pathname);
     return NextResponse.redirect(url);
+  }
+
+  const cached = getCachedAccess(token);
+  if (cached) {
+    return moduleKeys.every((key) => cached.enabled.has(key))
+      ? noStore(NextResponse.next())
+      : unavailable(request);
   }
 
   const config = configuration();
@@ -118,13 +146,16 @@ export async function middleware(request: NextRequest) {
     const profiles = await profileResponse.json() as Array<{ businessId: string }>;
     if (!profiles[0]?.businessId) throw new Error('profile-unavailable');
 
+    // Fetch the business's full module map once and cache it, so every route
+    // decision for this session is answered locally for the next minute.
     const moduleResponse = await fetch(
-      `${config.url}/rest/v1/business_modules?select=module_key,enabled&business_id=eq.${encodeURIComponent(profiles[0].businessId)}&module_key=in.(${moduleKeys.join(',')})`,
+      `${config.url}/rest/v1/business_modules?select=module_key,enabled&business_id=eq.${encodeURIComponent(profiles[0].businessId)}`,
       { headers, cache: 'no-store' }
     );
     if (!moduleResponse.ok) throw new Error('modules-unavailable');
     const modules = await moduleResponse.json() as Array<{ module_key: string; enabled: boolean }>;
     const enabled = new Set(modules.filter((item) => item.enabled).map((item) => item.module_key));
+    setCachedAccess(token, { businessId: profiles[0].businessId, enabled, expires: Date.now() + ACCESS_CACHE_MS });
     return moduleKeys.every((key) => enabled.has(key)) ? noStore(NextResponse.next()) : unavailable(request);
   } catch (error) {
     if (error instanceof Error && error.message !== 'invalid-session') {

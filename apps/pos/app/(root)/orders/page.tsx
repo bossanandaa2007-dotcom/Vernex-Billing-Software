@@ -10,10 +10,7 @@ export const metadata: Metadata = {
 const page = () => {
   return (
     <div className="w-full h-full">
-      <PageHeading
-        title="POS Billing"
-        description="Find products, prepare the bill, and complete payment."
-      />
+      <PageHeading title="POS Billing" />
       <ErrorBoundary>
         <PosBilling />
       </ErrorBoundary>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, Banknote, Boxes, CheckCircle2, CreditCard, IndianRupee, Loader2, RefreshCw, ReceiptText, RotateCcw, ShoppingCart, Sparkles, Trophy, Users } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Banknote, Boxes, CheckCircle2, CreditCard, IndianRupee, Loader2, RefreshCw, ReceiptText, RotateCcw, ShoppingCart, Trophy, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatMoney } from '@/lib/currency';
 import { getTotal } from '@/data/stock';
@@ -92,11 +92,7 @@ export function Dashboard() {
       <div className="rounded-xl border border-vernex-border bg-white p-4 shadow-sm sm:p-5 dark:border-[#1E335F] dark:bg-vernex-navy">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-600 dark:text-vernex-gold">
-              <Sparkles className="h-4 w-4" />
-              Live workspace
-            </div>
-            <h2 className="mt-1 text-xl font-bold leading-tight text-vernex-navy sm:text-2xl dark:text-white">{activePeriod.title}</h2>
+            <h2 className="text-xl font-bold leading-tight text-vernex-navy sm:text-2xl dark:text-white">{activePeriod.title}</h2>
             {loading && (
               <p className="mt-1 text-sm font-normal leading-5 text-vernex-muted dark:text-slate-300">
                 Loading {activePeriod.label.toLowerCase()} performance...

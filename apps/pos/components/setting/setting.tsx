@@ -17,7 +17,7 @@ export function Setting() {
   const [country, setCountry] = useState('India');
   const [currency, setCurrency] = useState('INR');
   const [taxMode, setTaxMode] = useState('GST');
-  const [receiptDetails, setReceiptDetails] = useState({ phone: '', address: '', taxId: '', receiptFooter: 'Thank you for your business!' });
+  const [receiptDetails, setReceiptDetails] = useState({ phone: '', address: '', taxId: '', receiptFooter: 'Thank you for your business!', receiptLogo: '' });
   const [billing, setBilling] = useState({ billPrefix: 'VNX', billPadding: 6, billNextNumber: 1, showBusinessLogo: true, showTaxId: true, showCustomerDetails: true, showItemTax: true, showFooter: true });
   const [loading, setLoading] = useState(true);
   const { enabledModules } = useBusinessAccess();
@@ -49,6 +49,7 @@ export function Setting() {
             address: shopdata?.address ?? '',
             taxId: shopdata?.taxId ?? '',
             receiptFooter: shopdata?.receiptFooter ?? 'Thank you for your business!',
+            receiptLogo: shopdata?.receiptLogo ?? '',
           });
           setBilling({ billPrefix: shopdata?.billPrefix ?? 'VNX', billPadding: shopdata?.billPadding ?? 6, billNextNumber: shopdata?.billNextNumber ?? 1, showBusinessLogo: shopdata?.showBusinessLogo ?? true, showTaxId: shopdata?.showTaxId ?? true, showCustomerDetails: shopdata?.showCustomerDetails ?? true, showItemTax: shopdata?.showItemTax ?? true, showFooter: shopdata?.showFooter ?? true });
         }

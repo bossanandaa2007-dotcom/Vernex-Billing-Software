@@ -1,5 +1,4 @@
 import { getCurrentUserContext } from '@/lib/auth';
-import isOnline from 'is-online';
 import { createServerClient } from '@/src/lib/supabase/server';
 
 export const fetchProduct = async ({
@@ -16,34 +15,32 @@ export const fetchProduct = async ({
   'use server';
 
   try {
-    const isOnlineResult = await isOnline();
+    const ctx = await getCurrentUserContext();
+    const selectedCategory = category?.trim() ? category.trim() : undefined;
+    const supabase = await createServerClient();
+    let productsQuery = supabase
+      .from('Product')
+      .select('id, productId, sellprice, productstock:ProductStock!inner(id,name,imageProduct,cat,stock,price,businessId)', { count: 'exact' })
+      .eq('productstock.businessId', ctx.businessId)
+      .range(skip, skip + take - 1);
+    if (query) productsQuery = productsQuery.ilike('productstock.name', `%${query}%`);
+    if (selectedCategory) productsQuery = productsQuery.eq('productstock.cat', selectedCategory);
 
-    if (!isOnlineResult) return null;
+    const [productsResult, shopResult, categoryResult] = await Promise.all([
+      productsQuery,
+      supabase.from('ShopData').select('currency').eq('businessId', ctx.businessId).maybeSingle(),
+      supabase.from('ProductStock').select('cat').eq('businessId', ctx.businessId).order('cat'),
+    ]);
+    if (productsResult.error) throw productsResult.error;
 
-  const ctx = await getCurrentUserContext();
-  const selectedCategory = category?.trim() ? category.trim() : undefined;
-  const supabase = await createServerClient();
-  let productsQuery = supabase
-    .from('Product')
-    .select('id, productId, sellprice, productstock:ProductStock!inner(id,name,imageProduct,cat,stock,price,businessId)', { count: 'exact' })
-    .eq('productstock.businessId', ctx.businessId)
-    .range(skip, skip + take - 1);
-  if (query) productsQuery = productsQuery.ilike('productstock.name', `%${query}%`);
-  if (selectedCategory) productsQuery = productsQuery.eq('productstock.cat', selectedCategory);
-  const [productsResult, shopResult, categoryResult] = await Promise.all([
-    productsQuery,
-    supabase.from('ShopData').select('currency').eq('businessId', ctx.businessId).maybeSingle(),
-    supabase.from('ProductStock').select('cat').eq('businessId', ctx.businessId).order('cat'),
-  ]);
-  if (productsResult.error) throw productsResult.error;
-  const results = (productsResult.data ?? []).map((row) => ({
-    ...row,
-    productstock: Array.isArray(row.productstock) ? row.productstock[0] : row.productstock,
-  }));
-  const total = productsResult.count ?? 0;
-  const shop = shopResult.data;
-  const categoryRows = Array.from(new Set((categoryResult.data ?? []).map((item) => item.cat)))
-    .map((cat) => ({ cat }));
+    const results = (productsResult.data ?? []).map((row) => ({
+      ...row,
+      productstock: Array.isArray(row.productstock) ? row.productstock[0] : row.productstock,
+    }));
+    const total = productsResult.count ?? 0;
+    const shop = shopResult.data;
+    const categoryRows = Array.from(new Set((categoryResult.data ?? []).map((item) => item.cat)))
+      .map((cat) => ({ cat }));
 
     return {
       data: results,
