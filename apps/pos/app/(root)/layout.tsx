@@ -11,7 +11,6 @@ import Navbar from '@/components/dashboard/navbar';
 import { NavbarSheet } from '@/components/dashboard/NavbarSheet';
 import Bread from '@/components/dashboard/breadcrumb';
 import { toast } from 'react-toastify';
-import axios from 'axios';
 import eventBus from '@/lib/even';
 import { VernexBrand } from '@/components/dashboard/brand';
 import { NAVBAR_ITEMS } from '@/constant/navbarMenu';
@@ -23,6 +22,7 @@ import { LogoutButton } from '@/components/auth/LogoutButton';
 import { MobileBottomNav } from '@/components/dashboard/MobileBottomNav';
 import Image from 'next/image';
 import { getModuleForPathname } from '@/lib/modules';
+import { getShopData } from '@/lib/client-data';
 const RootLayout = ({ children }: RootLayoutProps) => {
   const [storeName, setStoreName] = useState('Vernex');
   const [collapsed, setCollapsed] = useState(false);
@@ -30,7 +30,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   const showHeaderSearch = pathname !== '/home';
   const { role, enabledModules, loading } = useBusinessAccess();
   useEffect(() => {
-    const fetchShopData = async () => {
+    const fetchShopData = async (fresh = false) => {
       try {
         const isOnline = navigator.onLine;
 
@@ -41,20 +41,16 @@ const RootLayout = ({ children }: RootLayoutProps) => {
           return;
         }
 
-        const response = await axios.get('/api/shopdata');
-        const shopdata = response.data?.data;
-
-        if (response.status === 200) {
-          setStoreName(shopdata?.name || 'Vernex');
-        }
+        const response = await getShopData({ fresh });
+        setStoreName(response.data?.name || 'Vernex');
       } catch {
         toast.error('Unable to load business details. Please check your connection.');
       }
     };
 
-    fetchShopData();
+    fetchShopData(false);
     const handleEventBusEvent = () => {
-      fetchShopData();
+      fetchShopData(true);
     };
 
     eventBus.on('fetchStoreData', handleEventBusEvent);

@@ -7,6 +7,7 @@ import { formatBillNumber } from '@/lib/bill-number';
 import { authErrorResponse, requireAuth, requirePermission } from '@/lib/auth';
 import { writeAuditLog } from '@/lib/audit';
 import { requireActiveSubscription } from '@/lib/subscription';
+import { clearBusinessShopDataCache, getBusinessShopData } from '@/lib/shop-data';
 import { createServerClient } from '@/src/lib/supabase/server';
 
 const MAX_LOGO_BYTES = 120 * 1024;
@@ -95,39 +96,10 @@ const settingsSchema = z
   })
   .refine((value) => Object.values(value).some((item) => item !== undefined), 'No settings supplied.');
 
-const shopCache = new Map<string, { expires: number; data: unknown }>();
-const SHOP_CACHE_MS = 30_000;
-
 export async function GET(request: Request) {
   try {
     const ctx = await requireAuth(request);
-    const cached = shopCache.get(ctx.businessId);
-    if (cached && cached.expires > Date.now()) return NextResponse.json(cached.data);
-    const supabase = await createServerClient(request);
-    const [storedResult, sequenceResult] = await Promise.all([
-      supabase.from('ShopData').select('*').eq('businessId', ctx.businessId).maybeSingle(),
-      supabase.from('BillSequence').select('*').eq('id', ctx.businessId).maybeSingle(),
-    ]);
-    const stored = storedResult.data;
-    const sequence = sequenceResult.data;
-    const data = stored ?? {
-      id: null,
-      name: 'Vernex',
-      tax: 0,
-      country: 'India',
-      currency: 'INR',
-      taxMode: TaxMode.GST,
-      phone: null,
-      address: null,
-      taxId: null,
-      receiptFooter: 'Thank you for your business!',
-      receiptLogo: null,
-      billPrefix: 'VNX', billPadding: 6, showBusinessLogo: true, showTaxId: true,
-      showCustomerDetails: true, showItemTax: true, showFooter: true, receiptSize: '80mm',
-    };
-    const response = { data: { ...data, billNextNumber: sequence?.nextNumber ?? 1 } };
-    shopCache.set(ctx.businessId, { expires: Date.now() + SHOP_CACHE_MS, data: response });
-    return NextResponse.json(response);
+    return NextResponse.json(await getBusinessShopData(ctx.businessId, request));
   } catch (error) {
     const response = authErrorResponse(error);
     if (response) return response;
@@ -199,7 +171,7 @@ export async function POST(request: Request) {
   if (billNextNumber !== undefined) {
     await supabase.from('BillSequence').upsert({ id: ctx.businessId, businessId: ctx.businessId, nextNumber: billNextNumber });
   }
-  shopCache.delete(ctx.businessId);
+  clearBusinessShopDataCache(ctx.businessId);
 
   await writeAuditLog(ctx, { action: 'SETTINGS_UPDATED', entityType: 'ShopData', entityId: saved.id, description: 'Updated business/settings data', metadata: Object.keys(values) });
   if (values.billPrefix !== undefined || values.billPadding !== undefined || billNextNumber !== undefined) {

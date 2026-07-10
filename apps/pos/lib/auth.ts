@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { hasPermission, isRoleAllowed, type Permission } from '@/lib/permissions';
 import { getModuleForPermission, hasModule } from '@/lib/modules';
+import { decodeRequestContext, decodeRequestContextCookie, requestContextCookieName } from '@/lib/request-context';
 import { sessionCookieName } from '@/lib/session-cookie';
 import { createServerClient } from '@/src/lib/supabase/server';
 import type { StaffStatus, UserRole } from '@/src/types/domain';
@@ -31,6 +32,15 @@ export type CurrentUserContext = {
 const contextCache = new Map<string, { ctx: CurrentUserContext; expires: number }>();
 const CONTEXT_CACHE_MS = 30_000;
 const CONTEXT_CACHE_MAX = 500;
+const authSourceByRequest = new WeakMap<Request, string>();
+
+function rememberAuthSource(request: Request | undefined, source: string) {
+  if (request) authSourceByRequest.set(request, source);
+}
+
+export function getAuthSource(request: Request | undefined) {
+  return request ? authSourceByRequest.get(request) ?? 'unknown' : 'unknown';
+}
 
 async function resolveSessionToken(request?: Request) {
   const authorization = request?.headers.get('authorization');
@@ -45,8 +55,39 @@ async function resolveSessionToken(request?: Request) {
 export async function getCurrentUserContext(request?: Request): Promise<CurrentUserContext> {
   const cacheToken = await resolveSessionToken(request);
   if (cacheToken) {
+    let requestHeaders: Headers | null = request?.headers ?? null;
+    if (!requestHeaders) {
+      try {
+        requestHeaders = await headers();
+      } catch {
+        requestHeaders = null;
+      }
+    }
+    const headerContext = requestHeaders ? await decodeRequestContext(requestHeaders, cacheToken) : null;
+    if (headerContext) {
+      if (contextCache.size >= CONTEXT_CACHE_MAX) contextCache.clear();
+      contextCache.set(cacheToken, { ctx: headerContext, expires: Date.now() + CONTEXT_CACHE_MS });
+      rememberAuthSource(request, 'signed-header');
+      return headerContext;
+    }
+
+    try {
+      const cookieContext = await decodeRequestContextCookie((await cookies()).get(requestContextCookieName)?.value, cacheToken);
+      if (cookieContext) {
+        if (contextCache.size >= CONTEXT_CACHE_MAX) contextCache.clear();
+        contextCache.set(cacheToken, { ctx: cookieContext, expires: Date.now() + CONTEXT_CACHE_MS });
+        rememberAuthSource(request, 'signed-cookie');
+        return cookieContext;
+      }
+    } catch {}
+  }
+
+  if (cacheToken) {
     const cached = contextCache.get(cacheToken);
-    if (cached && cached.expires > Date.now()) return cached.ctx;
+    if (cached && cached.expires > Date.now()) {
+      rememberAuthSource(request, 'memory-cache');
+      return cached.ctx;
+    }
     if (cached) contextCache.delete(cacheToken);
   }
 
@@ -97,6 +138,7 @@ export async function getCurrentUserContext(request?: Request): Promise<CurrentU
     if (contextCache.size >= CONTEXT_CACHE_MAX) contextCache.clear();
     contextCache.set(cacheToken, { ctx, expires: Date.now() + CONTEXT_CACHE_MS });
   }
+  rememberAuthSource(request, 'supabase-cold');
   return ctx;
 }
 
