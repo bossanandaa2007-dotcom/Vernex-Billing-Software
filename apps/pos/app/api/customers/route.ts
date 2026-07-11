@@ -14,8 +14,24 @@ export async function GET(request: Request) {
     if (response) return response;
     throw error;
   }
-  const query = new URL(request.url).searchParams.get('q')?.trim() ?? '';
+  const { searchParams } = new URL(request.url);
+  const query = searchParams.get('q')?.trim() ?? '';
+  const compact = searchParams.get('compact') === '1';
   const supabase = await createServerClient(request);
+  if (compact) {
+    let compactQuery = supabase
+      .from('Customer')
+      .select('id,name,phone,email,address,taxId')
+      .eq('businessId', ctx.businessId)
+      .eq('isActive', true)
+      .order('updatedAt', { ascending: false })
+      .limit(25);
+    if (query) compactQuery = compactQuery.or(`name.ilike.%${query}%,phone.ilike.%${query}%`);
+    const { data, error } = await compactQuery;
+    if (error) throw error;
+    return NextResponse.json(data ?? []);
+  }
+
   let customerQuery = supabase
     .from('Customer')
     .select('*, transactions:Transaction(id,billNumber,totalAmount,refundedAmount,completedAt,isComplete)')

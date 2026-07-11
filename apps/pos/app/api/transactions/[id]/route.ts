@@ -6,20 +6,51 @@ import { safeOperationMessage } from '@/lib/api-error';
 import { createServerClient } from '@/src/lib/supabase/server';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const started = performance.now();
   const { id } = await params;
   let ctx;
+  const paramsEnd = performance.now();
   try { ctx = await requirePermission(request, 'POS_BILLING'); } catch (error) { const response = authErrorResponse(error); if (response) return response; throw error; }
+  const authEnd = performance.now();
   const supabase = await createServerClient(request);
+  const clientEnd = performance.now();
   const { data: transaction } = await supabase.from('Transaction')
     .select('*, products:OnSaleProduct(*, product:Product(*, productstock:ProductStock(*))), returns:SaleReturn(*, items:ReturnItem(*))')
     .eq('id', id).eq('businessId', ctx.businessId).maybeSingle();
+  const queryEnd = performance.now();
   if (transaction) {
     transaction.products = ((transaction.products ?? []) as any[]).sort((a, b) => a.productName.localeCompare(b.productName));
     transaction.returns = ((transaction.returns ?? []) as any[]).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
+  const sortEnd = performance.now();
 
-  if (!transaction) return NextResponse.json({ error: 'Bill not found.' }, { status: 404 });
-  return NextResponse.json({ transaction, items: transaction.products });
+  if (!transaction) {
+    const response = NextResponse.json({ error: 'Bill not found.' }, { status: 404 });
+    console.log(`PERF_TRANSACTION_GET ${JSON.stringify({
+      id,
+      status: 404,
+      totalMs: Math.round(performance.now() - started),
+      paramsMs: Math.round(paramsEnd - started),
+      authMs: Math.round(authEnd - paramsEnd),
+      supabaseClientMs: Math.round(clientEnd - authEnd),
+      queryMs: Math.round(queryEnd - clientEnd),
+      sortMs: Math.round(sortEnd - queryEnd),
+    })}`);
+    return response;
+  }
+  const response = NextResponse.json({ transaction, items: transaction.products });
+  console.log(`PERF_TRANSACTION_GET ${JSON.stringify({
+    id,
+    status: 200,
+    totalMs: Math.round(performance.now() - started),
+    paramsMs: Math.round(paramsEnd - started),
+    authMs: Math.round(authEnd - paramsEnd),
+    supabaseClientMs: Math.round(clientEnd - authEnd),
+    queryMs: Math.round(queryEnd - clientEnd),
+    sortMs: Math.round(sortEnd - queryEnd),
+    itemCount: transaction.products?.length ?? 0,
+  })}`);
+  return response;
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {

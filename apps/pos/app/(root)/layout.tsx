@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 interface RootLayoutProps {
   children: React.ReactNode;
 }
-import { Bell, ChevronsLeft, ChevronsRight, Menu, Search, Settings, Store } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, Menu, Search, Settings, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetTrigger } from '@/components/ui/sheet';
 import { ModeToggle } from '@/components/darkmode/darkmode';
@@ -11,7 +11,6 @@ import Navbar from '@/components/dashboard/navbar';
 import { NavbarSheet } from '@/components/dashboard/NavbarSheet';
 import Bread from '@/components/dashboard/breadcrumb';
 import { toast } from 'react-toastify';
-import axios from 'axios';
 import eventBus from '@/lib/even';
 import { VernexBrand } from '@/components/dashboard/brand';
 import { NAVBAR_ITEMS } from '@/constant/navbarMenu';
@@ -23,6 +22,7 @@ import { LogoutButton } from '@/components/auth/LogoutButton';
 import { MobileBottomNav } from '@/components/dashboard/MobileBottomNav';
 import Image from 'next/image';
 import { getModuleForPathname } from '@/lib/modules';
+import { getShopData } from '@/lib/client-data';
 const RootLayout = ({ children }: RootLayoutProps) => {
   const [storeName, setStoreName] = useState('Vernex');
   const [collapsed, setCollapsed] = useState(false);
@@ -30,7 +30,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   const showHeaderSearch = pathname !== '/home';
   const { role, enabledModules, loading } = useBusinessAccess();
   useEffect(() => {
-    const fetchShopData = async () => {
+    const fetchShopData = async (fresh = false) => {
       try {
         const isOnline = navigator.onLine;
 
@@ -41,20 +41,16 @@ const RootLayout = ({ children }: RootLayoutProps) => {
           return;
         }
 
-        const response = await axios.get('/api/shopdata');
-        const shopdata = response.data?.data;
-
-        if (response.status === 200) {
-          setStoreName(shopdata?.name || 'Vernex');
-        }
+        const response = await getShopData({ fresh });
+        setStoreName(response.data?.name || 'Vernex');
       } catch {
         toast.error('Unable to load business details. Please check your connection.');
       }
     };
 
-    fetchShopData();
+    fetchShopData(false);
     const handleEventBusEvent = () => {
-      fetchShopData();
+      fetchShopData(true);
     };
 
     eventBus.on('fetchStoreData', handleEventBusEvent);
@@ -147,11 +143,6 @@ const RootLayout = ({ children }: RootLayoutProps) => {
               <Store className="h-4 w-4 text-vernex-gold" />
               <span className="max-w-40 truncate">{storeName}</span>
             </div>
-            <Button variant="outline" size="icon" className="relative h-11 w-11 shrink-0 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white lg:border-vernex-border lg:bg-white lg:text-vernex-navy lg:hover:bg-vernex-surface dark:border-[#1E335F] dark:bg-vernex-navy dark:text-white">
-              <Bell className="h-4 w-4" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-vernex-gold" />
-              <span className="sr-only">Notifications</span>
-            </Button>
             <div className="hidden sm:block"><ModeToggle /></div>
             {enabledModules.includes('business_settings') && <Button variant="outline" size="icon" asChild className="h-11 w-11 shrink-0 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white lg:border-vernex-border lg:bg-white lg:text-vernex-navy lg:hover:bg-vernex-surface dark:border-[#1E335F] dark:bg-vernex-navy dark:text-white">
               <Link href="/settings">

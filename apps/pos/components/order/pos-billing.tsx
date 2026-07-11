@@ -16,7 +16,6 @@ import { ReceiptItem, ReceiptSale, ReceiptShop } from '@/lib/receipt';
 import { TransactionData } from '@/types/transaction';
 import axios from 'axios';
 import {
-  Barcode,
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
@@ -42,6 +41,7 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { userFacingError } from '@/lib/user-facing-error';
+import { getShopData } from '@/lib/client-data';
 
 type ProductDetail = {
   sellprice: number;
@@ -55,6 +55,17 @@ type ProductStock = {
   stock: number;
   cat: string;
   Product: ProductDetail[];
+};
+
+type ProductsResponse = {
+  data: ProductStock[];
+  categories: string[];
+  metadata: {
+    page: number;
+    limit: number;
+    total: number;
+    hasNextPage: boolean;
+  };
 };
 
 type Customer = {
@@ -96,6 +107,13 @@ export function PosBilling() {
   const [customerId, setCustomerId] = useState('');
   const [customer, setCustomer] = useState({ name: '', phone: '', email: '', address: '', taxId: '' });
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loadingMoreProducts, setLoadingMoreProducts] = useState(false);
+  const [productPage, setProductPage] = useState(1);
+  const [productHasNext, setProductHasNext] = useState(false);
+  const [serverCategories, setServerCategories] = useState<string[]>([]);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [customersLoaded, setCustomersLoaded] = useState(false);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [mutating, setMutating] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [lastRemoved, setLastRemoved] = useState<RemovedLine | null>(null);
@@ -110,25 +128,41 @@ export function PosBilling() {
     searchRef.current?.focus();
   }, []);
 
-  const fetchProducts = useCallback(async (silent = false) => {
-    if (!silent) setLoadingProducts(true);
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm.trim());
+    }, 250);
+    return () => window.clearTimeout(handle);
+  }, [searchTerm]);
+
+  const fetchProducts = useCallback(async ({ page = 1, append = false, silent = false } = {}) => {
+    if (append) setLoadingMoreProducts(true);
+    else if (!silent) setLoadingProducts(true);
     try {
-      const response = await axios.get<ProductStock[]>('/api/storage');
-      setProducts(response.data);
+      const params: Record<string, string | number> = { page, limit: 24 };
+      if (debouncedSearchTerm) params.q = debouncedSearchTerm;
+      if (category !== ALL) params.category = category;
+      if (brand !== ALL) params.brand = brand;
+      const response = await axios.get<ProductsResponse>('/api/storage', { params });
+      setProducts((current) => append ? [...current, ...response.data.data] : response.data.data);
+      setServerCategories(response.data.categories ?? []);
+      setProductPage(response.data.metadata.page);
+      setProductHasNext(response.data.metadata.hasNextPage);
     } catch {
       toast.error('Unable to refresh products.');
     } finally {
       setLoadingProducts(false);
+      setLoadingMoreProducts(false);
     }
-  }, []);
+  }, [brand, category, debouncedSearchTerm]);
 
-  const fetchTransactionData = useCallback(async () => {
-    if (!transactionId) {
+  const fetchTransactionData = useCallback(async (id = transactionId) => {
+    if (!id) {
       setTransactionData([]);
       return;
     }
     try {
-      const response = await axios.get(`/api/transactions/${transactionId}`);
+      const response = await axios.get(`/api/transactions/${id}`);
       setTransactionData(response.data.items ?? []);
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -143,19 +177,36 @@ export function PosBilling() {
 
   useEffect(() => {
     fetchProducts();
-    axios.get('/api/shopdata').then(({ data }) => {
+    getShopData().then((data) => {
       const nextShop = data.data ?? {};
       setShop(nextShop);
     }).catch(() => {});
-    axios.get('/api/customers').then(({ data }) => setCustomers(data)).catch(() => setCustomers([]));
   }, [fetchProducts]);
+
+  const fetchCustomers = useCallback(async () => {
+    if (customersLoaded || loadingCustomers) return;
+    setLoadingCustomers(true);
+    try {
+      const { data } = await axios.get<Customer[]>('/api/customers', { params: { compact: 1 } });
+      setCustomers(data);
+      setCustomersLoaded(true);
+    } catch {
+      setCustomers([]);
+    } finally {
+      setLoadingCustomers(false);
+    }
+  }, [customersLoaded, loadingCustomers]);
+
+  useEffect(() => {
+    if (activeOverlay === 'summary') fetchCustomers();
+  }, [activeOverlay, fetchCustomers]);
 
   useEffect(() => {
     fetchTransactionData();
   }, [fetchTransactionData]);
 
   useEffect(() => {
-    const refresh = () => fetchProducts(true);
+    const refresh = () => fetchProducts({ page: 1, silent: true });
     const interval = window.setInterval(() => {
       if (!activeOverlay) refresh();
     }, 30000);
@@ -184,22 +235,9 @@ export function PosBilling() {
   const itemCount = transactionData.reduce((sum, item) => sum + item.quantity, 0);
   const methods = country === 'India' ? ['CASH', 'UPI', 'CARD', 'CREDIT'] : ['CASH', 'CARD', 'ONLINE', 'CREDIT'];
 
-  const categories = useMemo(() => [ALL, ...Array.from(new Set(products.map((item) => item.cat)))], [products]);
+  const categories = useMemo(() => [ALL, ...serverCategories], [serverCategories]);
   const brands = useMemo(() => [ALL, ...Array.from(new Set(products.map((item) => item.id.split('-')[0] || 'SKU')))], [products]);
-  const filteredProducts = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    return products.filter((product) => {
-      const salePrice = product.Product[0]?.sellprice;
-      const matchesQuery =
-        !query ||
-        product.name.toLowerCase().includes(query) ||
-        product.id.toLowerCase().includes(query) ||
-        String(salePrice ?? '').includes(query);
-      const matchesCategory = category === ALL || product.cat === category;
-      const matchesBrand = brand === ALL || product.id.startsWith(brand);
-      return matchesQuery && matchesCategory && matchesBrand;
-    });
-  }, [brand, category, products, searchTerm]);
+  const filteredProducts = products;
 
   useEffect(() => {
     if (paymentMethod !== 'CREDIT' && grandTotal > 0) {
@@ -221,11 +259,24 @@ export function PosBilling() {
     const product = products.find((item) => item.id === productId);
     if (!product || product.stock <= 0) return toast.error('This product is out of stock.');
     setMutating(true);
+    const clickStart = performance.now();
     try {
       const id = await ensureTransaction();
-      await axios.post('/api/onsale', { productId, transactionId: id, qTy: quantity });
+      const postStart = performance.now();
+      const postResponse = await axios.post('/api/onsale', { productId, transactionId: id, qTy: quantity });
+      const postEnd = performance.now();
       setLastRemoved(null);
-      await Promise.all([fetchTransactionData(), fetchProducts(true)]);
+      const refreshStart = performance.now();
+      await fetchTransactionData(id);
+      const refreshEnd = performance.now();
+      console.info('PERF_ONSALE_CLIENT', {
+        traceId: postResponse.headers['x-vernex-trace-id'],
+        axiosPostMs: Math.round(postEnd - postStart),
+        serverRouteMs: postResponse.headers['x-vernex-route-ms'],
+        serverRpcMs: postResponse.headers['x-vernex-rpc-ms'],
+        followUpTransactionFetchMs: Math.round(refreshEnd - refreshStart),
+        totalAddProductFlowMs: Math.round(refreshEnd - clickStart),
+      });
       toast.success(`${product.name} added to bill.`);
     } catch (error) {
       toast.error(userFacingError(axios.isAxiosError(error) ? error.response?.data : error, 'Unable to add this product. Please try again.'));
@@ -285,6 +336,19 @@ export function PosBilling() {
     }
   };
 
+  const applyCompletedSaleToVisibleStock = (items: Array<ReceiptItem & { productId?: string | null }>) => {
+    const soldByProduct = new Map<string, number>();
+    items.forEach((item) => {
+      if (!item.productId) return;
+      soldByProduct.set(item.productId, (soldByProduct.get(item.productId) ?? 0) + Number(item.quantity ?? 0));
+    });
+    if (!soldByProduct.size) return;
+    setProducts((current) => current.map((product) => {
+      const sold = soldByProduct.get(product.id) ?? 0;
+      return sold ? { ...product, stock: Math.max(0, product.stock - sold) } : product;
+    }));
+  };
+
   const checkout = async () => {
     if (!transactionId || !transactionData.length) return;
     if (isBlocked) return toast.error(expiredMessage);
@@ -302,13 +366,14 @@ export function PosBilling() {
         customerId,
       });
       setReceiptSale(response.data);
-      setReceiptItems(response.data.products ?? []);
+      const soldItems = response.data.products ?? [];
+      setReceiptItems(soldItems);
+      applyCompletedSaleToVisibleStock(soldItems);
       setReceiptOpen(true);
       localStorage.removeItem('transactionId');
       setTransactionId(null);
       setTransactionData([]);
       setActiveOverlay(null);
-      await fetchProducts(true);
       toast.success(`Sale completed: ${response.data.billNumber}`);
     } catch (error) {
       toast.error(userFacingError(axios.isAxiosError(error) ? error.response?.data : error, 'Unable to complete the bill. Please try again.'));
@@ -359,16 +424,7 @@ export function PosBilling() {
       <section className="mx-auto w-full max-w-7xl space-y-4">
         <Card className="overflow-hidden border-vernex-border/80 shadow-sm">
           <CardHeader className="space-y-4 bg-white/80 pb-4 dark:bg-vernex-navy/60">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <PackageSearch className="h-5 w-5 text-vernex-gold" />
-                  Product Selection
-                </CardTitle>
-                <p className="mt-1 text-xs text-vernex-muted dark:text-slate-400">
-                  Search, scan, filter, and tap to add.
-                </p>
-              </div>
+            <div className="flex justify-end">
               <Button
                 variant="outline"
                 size="icon"
@@ -389,10 +445,9 @@ export function PosBilling() {
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') scanOrAddFirst();
                 }}
-                className="h-11 rounded-xl pl-9 pr-10"
-                placeholder="Search product, SKU, price, or scan barcode"
+                className="h-11 rounded-xl pl-9 pr-3"
+                placeholder="Search product, SKU, or price"
               />
-              <Barcode className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-vernex-gold" />
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <Select value={category} onValueChange={setCategory}>
@@ -405,10 +460,11 @@ export function PosBilling() {
               </Select>
             </div>
           </CardHeader>
-          <CardContent className="min-h-[520px] overflow-auto p-3 md:p-4">
+          <CardContent className="min-h-[520px] overflow-auto p-3 pb-40 md:p-4 md:pb-28">
             {loadingProducts ? <ProductSkeleton /> : filteredProducts.length ? (
-              <div className="grid gap-3 md:gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                {filteredProducts.map((product) => {
+              <>
+                <div className="grid grid-cols-2 gap-2.5 md:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
+                  {filteredProducts.map((product) => {
               const price = product.Product[0]?.sellprice ?? 0;
               const out = product.stock <= 0;
               const low = product.stock > 0 && product.stock <= LOW_STOCK_LIMIT;
@@ -418,34 +474,48 @@ export function PosBilling() {
                   type="button"
                   disabled={out || mutating}
                   onClick={() => addProduct(product.id)}
-                  className="group relative min-h-[132px] rounded-2xl border border-vernex-border bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 md:min-h-[170px] md:p-4 dark:border-[#1E335F] dark:bg-vernex-navy"
+                  className="group relative flex aspect-[0.92] min-h-0 flex-col rounded-xl border border-vernex-border bg-white p-2 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 md:aspect-auto md:min-h-[170px] md:rounded-2xl md:p-4 dark:border-[#1E335F] dark:bg-vernex-navy"
                 >
-                  <div className="flex gap-3 md:gap-4">
-                    <div className="relative grid h-[72px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-xl bg-vernex-surface md:h-24 md:w-24 dark:bg-vernex-dark">
+                  <div className="flex min-h-0 flex-1 flex-col gap-1.5 md:flex-row md:gap-4">
+                    <div className="relative grid h-10 w-full shrink-0 place-items-center overflow-hidden rounded-lg bg-vernex-surface md:h-24 md:w-24 md:rounded-xl dark:bg-vernex-dark">
                       {product.imageProduct ? (
                         <Image src={product.imageProduct} alt={product.name} fill className="object-cover" sizes="96px" />
                       ) : (
-                        <ShoppingBag className="h-7 w-7 text-emerald-600 md:h-8 md:w-8" />
+                        <ShoppingBag className="h-5 w-5 text-emerald-600 md:h-8 md:w-8" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="line-clamp-2 font-bold text-vernex-text dark:text-white">{product.name}</div>
+                      <div className="line-clamp-2 text-xs font-bold leading-snug text-vernex-text md:text-base dark:text-white">{product.name}</div>
                       <div className="mt-1 hidden text-xs text-vernex-muted md:block dark:text-slate-400">SKU: {product.id}</div>
-                      <div className="mt-2 font-black text-vernex-navy md:mt-3 dark:text-vernex-gold">{formatMoney(price, currency)}</div>
+                      <div className="mt-0.5 text-sm font-black leading-tight text-vernex-navy md:mt-3 md:text-base dark:text-vernex-gold">{formatMoney(price, currency)}</div>
                     </div>
                   </div>
-                  <div className="mt-2 flex items-center justify-between gap-3 md:mt-4">
-                      <Badge variant={out ? 'destructive' : low ? 'secondary' : 'outline'} className="rounded-full">
+                  <div className="mt-1.5 flex items-center justify-between gap-2 md:mt-4 md:gap-3">
+                      <Badge variant={out ? 'destructive' : low ? 'secondary' : 'outline'} className="max-w-[76px] truncate rounded-full px-1.5 text-[9px] leading-4 md:max-w-none md:px-2.5 md:text-xs">
                         {out ? 'Out of stock' : low ? 'Low stock' : product.cat}
                       </Badge>
-                    <span className="grid h-11 w-11 place-items-center rounded-lg bg-emerald-600 text-white shadow-sm transition group-hover:bg-emerald-700 md:h-9 md:w-9">
-                      <Plus className="h-5 w-5" />
+                    <span className="absolute bottom-2 right-2 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-600 text-white shadow-sm transition group-hover:bg-emerald-700 md:static md:h-9 md:w-9">
+                      <Plus className="h-4 w-4 md:h-5 md:w-5" />
                     </span>
                   </div>
                 </button>
               );
-            })}
-              </div>
+                  })}
+                </div>
+                {productHasNext && (
+                  <div className="mt-4 flex justify-center">
+                    <Button
+                      variant="outline"
+                      className="rounded-xl"
+                      onClick={() => fetchProducts({ page: productPage + 1, append: true, silent: true })}
+                      disabled={loadingMoreProducts}
+                    >
+                      {loadingMoreProducts ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Load more products
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : (
               <EmptyState
                 icon={<PackageSearch className="h-6 w-6" />}
@@ -621,6 +691,8 @@ export function PosBilling() {
                   <SelectTrigger className="mt-1 rounded-xl"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="walk-in">Walk-in customer</SelectItem>
+                    {loadingCustomers && <SelectItem value="loading" disabled>Loading customers...</SelectItem>}
+                    {!loadingCustomers && customersLoaded && !customers.length && <SelectItem value="none" disabled>No saved customers</SelectItem>}
                     {customers.map((item) => <SelectItem key={item.id} value={item.id}>{item.name} - {item.phone}</SelectItem>)}
                   </SelectContent>
                 </Select>

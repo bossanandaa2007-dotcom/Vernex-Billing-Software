@@ -7,7 +7,70 @@ import { formatBillNumber } from '@/lib/bill-number';
 import { authErrorResponse, requireAuth, requirePermission } from '@/lib/auth';
 import { writeAuditLog } from '@/lib/audit';
 import { requireActiveSubscription } from '@/lib/subscription';
+import { clearBusinessShopDataCache, getBusinessShopData } from '@/lib/shop-data';
 import { createServerClient } from '@/src/lib/supabase/server';
+
+const MAX_LOGO_BYTES = 120 * 1024;
+const MAX_LOGO_DIMENSION = 512;
+const imageDimensions = (mime: string, buffer: Buffer) => {
+  if (mime === 'png' && buffer.length >= 24) {
+    return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+  }
+  if (mime === 'jpeg') {
+    let offset = 2;
+    while (offset < buffer.length) {
+      if (buffer[offset] !== 0xff) break;
+      const marker = buffer[offset + 1];
+      const length = buffer.readUInt16BE(offset + 2);
+      if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker)) {
+        return { width: buffer.readUInt16BE(offset + 7), height: buffer.readUInt16BE(offset + 5) };
+      }
+      offset += 2 + length;
+    }
+  }
+  if (mime === 'webp' && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP') {
+    const type = buffer.toString('ascii', 12, 16);
+    if (type === 'VP8X' && buffer.length >= 30) {
+      return { width: 1 + buffer.readUIntLE(24, 3), height: 1 + buffer.readUIntLE(27, 3) };
+    }
+    if (type === 'VP8 ' && buffer.length >= 30) {
+      return { width: buffer.readUInt16LE(26) & 0x3fff, height: buffer.readUInt16LE(28) & 0x3fff };
+    }
+    if (type === 'VP8L' && buffer.length >= 25) {
+      const bits = buffer.readUInt32LE(21);
+      return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 };
+    }
+  }
+  return null;
+};
+const receiptLogoSchema = z
+  .string()
+  .trim()
+  .superRefine((value, ctx) => {
+    if (!value) return true;
+    const match = value.match(/^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/);
+    if (!match) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Logo must be a PNG, JPG, or WebP image.' });
+      return false;
+    }
+    const [, mime, base64] = match;
+    const buffer = Buffer.from(base64, 'base64');
+    if (buffer.length > MAX_LOGO_BYTES) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Logo must be 120KB or smaller.' });
+      return false;
+    }
+    const dimensions = imageDimensions(mime, buffer);
+    if (!dimensions || dimensions.width > MAX_LOGO_DIMENSION || dimensions.height > MAX_LOGO_DIMENSION) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Logo dimensions must be 512 x 512 px or smaller.' });
+      return false;
+    }
+    return true;
+  })
+  .refine((value) => {
+    if (!value) return true;
+    const base64 = value.split(',')[1] ?? '';
+    return Math.ceil((base64.length * 3) / 4) <= MAX_LOGO_BYTES;
+  }, 'Logo must be 120KB or smaller.');
 
 const settingsSchema = z
   .object({
@@ -29,41 +92,14 @@ const settingsSchema = z
     showItemTax: z.boolean().optional(),
     showFooter: z.boolean().optional(),
     receiptSize: z.literal('80mm').optional(),
+    receiptLogo: receiptLogoSchema.optional(),
   })
   .refine((value) => Object.values(value).some((item) => item !== undefined), 'No settings supplied.');
-
-const shopCache = new Map<string, { expires: number; data: unknown }>();
-const SHOP_CACHE_MS = 30_000;
 
 export async function GET(request: Request) {
   try {
     const ctx = await requireAuth(request);
-    const cached = shopCache.get(ctx.businessId);
-    if (cached && cached.expires > Date.now()) return NextResponse.json(cached.data);
-    const supabase = await createServerClient(request);
-    const [storedResult, sequenceResult] = await Promise.all([
-      supabase.from('ShopData').select('*').eq('businessId', ctx.businessId).maybeSingle(),
-      supabase.from('BillSequence').select('*').eq('id', ctx.businessId).maybeSingle(),
-    ]);
-    const stored = storedResult.data;
-    const sequence = sequenceResult.data;
-    const data = stored ?? {
-      id: null,
-      name: 'Vernex',
-      tax: 0,
-      country: 'India',
-      currency: 'INR',
-      taxMode: TaxMode.GST,
-      phone: null,
-      address: null,
-      taxId: null,
-      receiptFooter: 'Thank you for your business!',
-      billPrefix: 'VNX', billPadding: 6, showBusinessLogo: true, showTaxId: true,
-      showCustomerDetails: true, showItemTax: true, showFooter: true, receiptSize: '80mm',
-    };
-    const response = { data: { ...data, billNextNumber: sequence?.nextNumber ?? 1 } };
-    shopCache.set(ctx.businessId, { expires: Date.now() + SHOP_CACHE_MS, data: response });
-    return NextResponse.json(response);
+    return NextResponse.json(await getBusinessShopData(ctx.businessId, request));
   } catch (error) {
     const response = authErrorResponse(error);
     if (response) return response;
@@ -94,6 +130,7 @@ export async function POST(request: Request) {
     ...(values.address !== undefined ? { address: values.address || null } : {}),
     ...(values.taxId !== undefined ? { taxId: values.taxId || null } : {}),
     ...(values.receiptFooter !== undefined ? { receiptFooter: values.receiptFooter || 'Thank you for your business!' } : {}),
+    ...(values.receiptLogo !== undefined ? { receiptLogo: values.receiptLogo || null } : {}),
     ...(values.billPrefix !== undefined ? { billPrefix: values.billPrefix.toUpperCase() } : {}),
     ...(values.billPadding !== undefined ? { billPadding: values.billPadding } : {}),
     ...(values.showBusinessLogo !== undefined ? { showBusinessLogo: values.showBusinessLogo } : {}),
@@ -125,6 +162,7 @@ export async function POST(request: Request) {
           address: values.address || null,
           taxId: values.taxId || null,
           receiptFooter: values.receiptFooter || 'Thank you for your business!',
+          receiptLogo: values.receiptLogo || null,
           businessId: ctx.businessId,
         }).select('*').single();
   if (saveResult.error) return NextResponse.json({ error: 'Unable to save business settings.' }, { status: 400 });
@@ -133,13 +171,13 @@ export async function POST(request: Request) {
   if (billNextNumber !== undefined) {
     await supabase.from('BillSequence').upsert({ id: ctx.businessId, businessId: ctx.businessId, nextNumber: billNextNumber });
   }
-  shopCache.delete(ctx.businessId);
+  clearBusinessShopDataCache(ctx.businessId);
 
   await writeAuditLog(ctx, { action: 'SETTINGS_UPDATED', entityType: 'ShopData', entityId: saved.id, description: 'Updated business/settings data', metadata: Object.keys(values) });
   if (values.billPrefix !== undefined || values.billPadding !== undefined || billNextNumber !== undefined) {
     await writeAuditLog(ctx, { action: 'BILL_SETTINGS_UPDATED', entityType: 'BillSequence', entityId: ctx.businessId, description: 'Updated bill number settings' });
   }
-  if (values.showBusinessLogo !== undefined || values.showTaxId !== undefined || values.showCustomerDetails !== undefined || values.showItemTax !== undefined || values.showFooter !== undefined || values.receiptSize !== undefined) {
+  if (values.showBusinessLogo !== undefined || values.showTaxId !== undefined || values.showCustomerDetails !== undefined || values.showItemTax !== undefined || values.showFooter !== undefined || values.receiptSize !== undefined || values.receiptLogo !== undefined) {
     await writeAuditLog(ctx, { action: 'RECEIPT_SETTINGS_UPDATED', entityType: 'ShopData', entityId: saved.id, description: 'Updated receipt settings' });
   }
 

@@ -1,49 +1,5 @@
-import { Button } from '@/components/ui/button';
-import { TypewriterEffect } from '@/components/ui/type-writer';
-import Link from 'next/link';
-import Image from 'next/image';
+import { redirect } from 'next/navigation';
+
 export default function Home() {
-  const words = [
-    {
-      text: 'Billing',
-    },
-    {
-      text: 'software',
-    },
-    {
-      text: 'built',
-    },
-    {
-      text: 'for',
-    },
-    {
-      text: 'growing',
-    },
-    {
-      text: 'businesses.',
-      className: 'text-vernex-gold dark:text-vernex-gold-soft',
-    },
-  ];
-  return (
-    <main>
-      <div className="relative flex h-screen w-full items-center justify-center bg-vernex-surface dark:bg-vernex-dark">
-        <div className="relative z-10 flex flex-col items-center justify-center h-[40rem] ">
-          <Image src="/assets/vernex-logo.png" alt="Vernex" width={128} height={128} className="mb-6 h-28 w-28 object-contain" priority />
-          <p className="text-neutral-800 dark:text-neutral-200 text-xl  mb-10">
-            Welcome to Vernex
-          </p>
-          <TypewriterEffect words={words} />
-          <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 space-x-0 md:space-x-4 mt-10">
-            <Button
-              className="w-40 h-10 rounded-xl text-sm"
-              variant="secondary"
-              asChild
-            >
-              <Link href={'/home'}>Open Dashboard</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    </main>
-  );
+  redirect('/home');
 }

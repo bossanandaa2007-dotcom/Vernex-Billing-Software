@@ -10,10 +10,7 @@ export const metadata: Metadata = {
 const page = async (props: PageProps) => {
   return (
     <div className="w-full h-full">
-      <PageHeading
-        title="Sales Records"
-        description="Review completed and in-progress sales transactions."
-      />
+      <PageHeading title="Sales Records" />
       <Records {...props} />
     </div>
   );

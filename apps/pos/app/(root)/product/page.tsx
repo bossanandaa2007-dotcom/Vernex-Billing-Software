@@ -11,10 +11,7 @@ export const metadata: Metadata = {
 const page = async (props: PageProps) => {
   return (
     <div className="w-full h-full">
-      <PageHeading
-        title="Products"
-        description="Manage products, selling prices, and available stock."
-      />
+      <PageHeading title="Products" />
       <ErrorBoundary>
         <TableProduct {...props} />
       </ErrorBoundary>

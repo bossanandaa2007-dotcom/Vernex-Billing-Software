@@ -18,7 +18,14 @@ export type BusinessSubscriptionStatus = {
 
 const daysBetween = (from: Date, to: Date) => Math.max(0, Math.ceil((to.getTime() - from.getTime()) / 86_400_000));
 
+// Subscription state changes rarely; a short cache spares a Supabase round-trip
+// on every guarded request (matches the 30s dashboard cache pattern).
+const subscriptionCache = new Map<string, { data: BusinessSubscriptionStatus; expires: number }>();
+const SUBSCRIPTION_CACHE_MS = 30_000;
+
 export async function getBusinessSubscriptionStatus(businessId: string): Promise<BusinessSubscriptionStatus> {
+  const cached = subscriptionCache.get(businessId);
+  if (cached && cached.expires > Date.now()) return cached.data;
   const supabase = await createServerClient();
   const { data: business } = await supabase.from('Business').select('*').eq('id', businessId).maybeSingle();
   if (!business) throw new AuthError('Business account not found.', 403);
@@ -28,7 +35,7 @@ export async function getBusinessSubscriptionStatus(businessId: string): Promise
   const isTrialActive = business.subscriptionStatus === 'TRIAL' && trialStillInWindow;
   const isTrialExpired = business.subscriptionStatus === 'EXPIRED' || (business.subscriptionStatus === 'TRIAL' && !!trialEndsAt && trialEndsAt < now);
   const canUsePaidFeatures = business.subscriptionStatus === 'ACTIVE' || isTrialActive;
-  return {
+  const status: BusinessSubscriptionStatus = {
     businessId,
     status: isTrialExpired && business.subscriptionStatus === 'TRIAL' ? 'EXPIRED' : business.subscriptionStatus,
     planName: business.planName,
@@ -41,6 +48,8 @@ export async function getBusinessSubscriptionStatus(businessId: string): Promise
     isTrialExpired,
     canUsePaidFeatures,
   };
+  subscriptionCache.set(businessId, { data: status, expires: Date.now() + SUBSCRIPTION_CACHE_MS });
+  return status;
 }
 
 export async function isTrialActive(businessId: string) {

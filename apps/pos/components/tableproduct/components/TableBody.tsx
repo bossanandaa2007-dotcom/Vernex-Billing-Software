@@ -32,13 +32,9 @@ const TableBodyProduct: React.FC<TableBodyProductProps> = ({ data, currency }) =
   // State to manage product data
   const [productData, setProductData] = useState<ProductData[]>([]);
 
-  // useEffect to simulate data fetching
   useEffect(() => {
-    // Simulate data fetching
-    setTimeout(() => {
-      setProductData(data);
-      setLoading(false);
-    }, 1000); // Simulate a delay of 1 second
+    setProductData(data);
+    setLoading(false);
   }, [data]);
 
   return (

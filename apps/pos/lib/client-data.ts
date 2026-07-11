@@ -1,7 +1,7 @@
 'use client';
 
-let authContextRequest: Promise<any> | null = null;
-let subscriptionRequest: Promise<any> | null = null;
+let appContextRequest: Promise<any> | null = null;
+let shopDataRequest: Promise<any> | null = null;
 
 function getJson(url: string) {
   return fetch(url).then(async (response) => {
@@ -11,21 +11,33 @@ function getJson(url: string) {
 }
 
 export function getAuthContext() {
-  authContextRequest ??= getJson('/api/auth/context').catch((error) => {
-    authContextRequest = null;
-    throw error;
-  });
-  return authContextRequest;
+  return getAppContext().then((context) => ({ user: context.user }));
 }
 
 export function resetAuthContextCache() {
-  authContextRequest = null;
+  appContextRequest = null;
+  shopDataRequest = null;
 }
 
 export function getSubscription() {
-  subscriptionRequest ??= getJson('/api/subscription').catch((error) => {
-    subscriptionRequest = null;
+  return getAppContext().then((context) => ({ subscription: context.subscription }));
+}
+
+export function getShopData(options?: { fresh?: boolean }) {
+  if (options?.fresh) {
+    shopDataRequest = getJson('/api/shopdata').catch((error) => {
+      shopDataRequest = null;
+      throw error;
+    });
+    return shopDataRequest;
+  }
+  return getAppContext().then((context) => ({ data: context.shop }));
+}
+
+export function getAppContext() {
+  appContextRequest ??= getJson('/api/app-context').catch((error) => {
+    appContextRequest = null;
     throw error;
   });
-  return subscriptionRequest;
+  return appContextRequest;
 }

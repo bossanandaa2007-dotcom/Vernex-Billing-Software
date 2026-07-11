@@ -1,15 +1,16 @@
 import 'server-only';
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { adminCookieName, requireSuperAdmin } from '@/lib/auth.server';
 import { createServerSupabase } from '@/lib/supabase.server';
 import type { AdminAudit, AdminBusiness, AdminCustomer, AdminUser, DashboardSnapshot } from '@/types/admin';
 
-async function client() {
+const client = cache(async () => {
   await requireSuperAdmin();
   const token = (await cookies()).get(adminCookieName)?.value;
   if (!token) throw new Error('Your session has expired.');
   return createServerSupabase(token);
-}
+});
 
 function ensure(error: { message: string } | null, fallback: string) {
   if (error) throw new Error(fallback);
@@ -76,36 +77,39 @@ export async function listBusinesses({
 
 export async function getBusiness(id: string) {
   const supabase = await client();
-  const { data: business, error } = await supabase
-    .from('Business')
-    .select('id,name,country,subscriptionStatus,planName,trialStartedAt,trialEndsAt,createdAt,updatedAt')
-    .eq('id', id)
-    .single();
-  ensure(error, 'Unable to load this business.');
-  const { data: owner } = await supabase
-    .from('StaffProfile')
-    .select('name,email,phone,lastLoginAt')
-    .eq('businessId', id)
-    .eq('role', 'OWNER')
-    .order('createdAt', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  const counts = await Promise.all([
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const weekStart = new Date(now.getTime() - 6 * 86_400_000);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const [businessResult, ownerResult, ...counts] = await Promise.all([
+    supabase
+      .from('Business')
+      .select('id,name,country,subscriptionStatus,planName,trialStartedAt,trialEndsAt,createdAt,updatedAt')
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('StaffProfile')
+      .select('name,email,phone,lastLoginAt')
+      .eq('businessId', id)
+      .eq('role', 'OWNER')
+      .order('createdAt', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
     supabase.from('ProductStock').select('*', { count: 'exact', head: true }).eq('businessId', id),
     supabase.from('Customer').select('*', { count: 'exact', head: true }).eq('businessId', id),
     supabase.from('Transaction').select('*', { count: 'exact', head: true }).eq('businessId', id).eq('isComplete', true),
     supabase.from('SaleReturn').select('*', { count: 'exact', head: true }).eq('businessId', id),
     supabase.from('StaffProfile').select('*', { count: 'exact', head: true }).eq('businessId', id),
   ]);
+  const { data: business, error } = businessResult;
+  ensure(error, 'Unable to load this business.');
+  const { data: owner } = ownerResult;
   const { data: sales } = await supabase
     .from('Transaction')
     .select('totalAmount,completedAt')
     .eq('businessId', id)
-    .eq('isComplete', true);
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const weekStart = new Date(now.getTime() - 6 * 86_400_000);
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    .eq('isComplete', true)
+    .gte('completedAt', monthStart.toISOString());
   const sumSince = (date: Date) => (sales ?? [])
     .filter((sale) => sale.completedAt && new Date(sale.completedAt as string) >= date)
     .reduce((sum, sale) => sum + Number(sale.totalAmount ?? 0), 0);

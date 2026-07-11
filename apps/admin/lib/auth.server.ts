@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getServerEnvironment } from '@/lib/env.server';
@@ -11,7 +12,10 @@ export type SuperAdmin = {
   email: string;
 };
 
-export async function getSuperAdmin(): Promise<SuperAdmin | null> {
+// React cache() dedupes the token verification per request: portal pages call
+// several data helpers that each require the super admin, and without this each
+// one paid its own Supabase auth round-trip.
+export const getSuperAdmin = cache(async (): Promise<SuperAdmin | null> => {
   const token = (await cookies()).get(adminCookieName)?.value;
   if (!token) return null;
   const { data, error } = await createServerSupabase(token).auth.getUser(token);
@@ -20,7 +24,7 @@ export async function getSuperAdmin(): Promise<SuperAdmin | null> {
     return null;
   }
   return { id: data.user.id, email };
-}
+});
 
 export async function requireSuperAdmin() {
   const admin = await getSuperAdmin();

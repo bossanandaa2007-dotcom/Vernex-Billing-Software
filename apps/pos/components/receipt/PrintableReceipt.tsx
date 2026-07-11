@@ -9,9 +9,10 @@ export const PrintableReceipt = forwardRef<HTMLDivElement, { sale: ReceiptSale; 
     const taxLabel = shop.taxMode === 'NONE' ? 'Tax' : shop.taxMode?.replace('_', ' ') ?? 'Tax';
     const date = new Date(sale.completedAt ?? sale.createdAt);
     const showCustomer = shop.showCustomerDetails !== false;
+    const logoSrc = shop.receiptLogo || '/assets/vernex-logo.png';
     return <div ref={ref} className="receipt-print mx-auto w-full max-w-[80mm] bg-white p-4 font-mono text-[12px] leading-5 text-black">
       <div className="text-center">
-        {shop.showBusinessLogo !== false && <Image src="/assets/vernex-logo.png" alt="Vernex" width={52} height={52} className="mx-auto mb-1 h-12 w-12 object-contain" />}
+        {shop.showBusinessLogo !== false && <Image src={logoSrc} alt="Receipt logo" width={52} height={52} unoptimized={logoSrc.startsWith('data:')} className="mx-auto mb-1 h-12 w-12 object-contain" />}
         <div className="text-lg font-bold">VERNEX</div>
         {shop.name && shop.name !== 'Vernex' && <div className="font-bold">{shop.name}</div>}
         {shop.address && <div>{shop.address}</div>}
@@ -31,9 +32,9 @@ export const PrintableReceipt = forwardRef<HTMLDivElement, { sale: ReceiptSale; 
         <div className="flex justify-between"><span>{item.quantity} x {formatMoney(item.unitPrice, currency)}{shop.showItemTax !== false && item.taxRate ? ` @ ${item.taxRate}%` : ''}</span><span>{formatMoney(item.lineTotal, currency)}</span></div>
       </div>)}</div>
       <div className="my-3 border-y border-dashed border-black py-2">
-        <Row label="Subtotal" value={formatMoney(sale.subtotal, currency)} /><Row label="Discount" value={formatMoney(sale.discount, currency)} />
+        <Row label="Subtotal" value={formatMoney(sale.subtotal, currency)} />
         <Row label={taxLabel} value={formatMoney(sale.taxAmount, currency)} /><Row label="Grand Total" value={formatMoney(sale.totalAmount, currency)} bold />
-        <Row label="Payment" value={`${sale.paymentMethod ?? '-'} / ${sale.paymentStatus}`} /><Row label="Received" value={formatMoney(sale.amountReceived, currency)} /><Row label="Change" value={formatMoney(sale.changeAmount, currency)} />
+        <Row label="Payment" value={`${sale.paymentMethod ?? '-'} / ${sale.paymentStatus}`} />
       </div>
       <div className="text-center">{shop.showFooter !== false && <div>{shop.receiptFooter || 'Thank you for your business!'}</div>}<div className="mt-2 text-[10px]">Powered by Vernex</div></div>
     </div>;
