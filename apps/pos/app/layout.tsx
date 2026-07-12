@@ -4,6 +4,11 @@ import { ToastContainer } from 'react-toastify';
 import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
 import 'react-toastify/dist/ReactToastify.css';
+// Run all server functions in Singapore (sin1), colocated with the Supabase
+// database (ap-southeast-1). Vercel defaults to US-East (iad1); without this,
+// every DB round-trip crosses the Pacific and pages feel slow in production.
+export const preferredRegion = 'sin1';
+
 export const metadata: Metadata = {
   title: {
     default: 'Vernex',

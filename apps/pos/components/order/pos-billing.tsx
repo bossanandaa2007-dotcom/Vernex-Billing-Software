@@ -139,7 +139,6 @@ export function PosBilling() {
   useEffect(() => {
     const stored = localStorage.getItem('transactionId');
     if (stored) setTransactionId(stored);
-    searchRef.current?.focus();
   }, []);
 
   useEffect(() => {
@@ -643,14 +642,12 @@ export function PosBilling() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-auto">
-              <table className="w-full min-w-[760px] text-sm">
+              <table className="w-full min-w-[520px] text-sm">
                 <thead className="sticky top-0 z-10 bg-vernex-surface text-left text-xs uppercase text-vernex-muted dark:bg-vernex-dark dark:text-slate-400">
                   <tr>
                     <th className="px-4 py-3">Product</th>
-                    <th className="px-3 py-3">SKU</th>
                     <th className="px-3 py-3 text-right">Unit Price</th>
                     <th className="px-3 py-3 text-center">Qty</th>
-                    <th className="px-3 py-3 text-right">Discount</th>
                     <th className="px-3 py-3 text-right">Tax</th>
                     <th className="px-3 py-3 text-right">Line Total</th>
                     <th className="px-4 py-3 text-right"></th>
@@ -668,7 +665,6 @@ export function PosBilling() {
                           <div className="font-semibold text-vernex-text dark:text-white">{lineName}</div>
                           <div className="text-xs text-vernex-muted dark:text-slate-400">{line.product.productstock.cat}</div>
                         </td>
-                        <td className="px-3 py-3 text-xs text-vernex-muted">{line.productId}</td>
                         <td className="px-3 py-3 text-right">{formatMoney(linePrice, currency)}</td>
                         <td className="px-3 py-3">
                           <div className="mx-auto flex w-32 items-center justify-center rounded-lg border border-vernex-border bg-white dark:border-[#1E335F] dark:bg-vernex-dark">
@@ -693,7 +689,6 @@ export function PosBilling() {
                             <button className="p-2" onClick={() => updateQuantity(line, line.quantity + 1)} aria-label="Increase quantity"><Plus className="h-4 w-4" /></button>
                           </div>
                         </td>
-                        <td className="px-3 py-3 text-right">{formatMoney(0, currency)}</td>
                         <td className="px-3 py-3 text-right">{formatMoney(lineTax, currency)}</td>
                         <td className="px-3 py-3 text-right font-bold">{formatMoney(lineSubtotal + lineTax, currency)}</td>
                         <td className="px-4 py-3 text-right">
