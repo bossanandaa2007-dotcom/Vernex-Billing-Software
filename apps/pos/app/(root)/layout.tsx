@@ -25,6 +25,7 @@ import { getModuleForPathname } from '@/lib/modules';
 import { getShopData } from '@/lib/client-data';
 const RootLayout = ({ children }: RootLayoutProps) => {
   const [storeName, setStoreName] = useState('Vernex');
+  const [storeLogo, setStoreLogo] = useState('/assets/vernex-logo.png');
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
   const showHeaderSearch = pathname !== '/home';
@@ -43,6 +44,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
 
         const response = await getShopData({ fresh });
         setStoreName(response.data?.name || 'Vernex');
+        setStoreLogo(response.data?.receiptLogo || '/assets/vernex-logo.png');
       } catch {
         toast.error('Unable to load business details. Please check your connection.');
       }
@@ -117,11 +119,11 @@ const RootLayout = ({ children }: RootLayoutProps) => {
                   <span className="sr-only">Toggle navigation menu</span>
                 </Button>
               </SheetTrigger>
-              <NavbarSheet storeName={storeName} />
+              <NavbarSheet storeName={storeName} storeLogo={storeLogo} />
             </Sheet>
             <div className="flex min-w-0 flex-1 items-center justify-center gap-2 lg:hidden">
               <span className="grid h-9 w-10 shrink-0 place-items-center overflow-hidden rounded-md bg-white p-1">
-                <Image src="/assets/vernex-logo.png" alt="Vernex logo" width={40} height={30} className="h-full w-full object-contain" />
+                <Image src="/assets/vernex-logo.png" alt="Vernex logo" width={40} height={30} className="h-full w-full object-contain" unoptimized />
               </span>
               <span className="min-w-0 leading-tight text-white">
                 <span className="block truncate text-sm font-bold">VERNEX</span>

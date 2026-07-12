@@ -12,6 +12,7 @@ export function VernexBrand({ compact = false }: { compact?: boolean }) {
           height={48}
           className="h-full w-full object-contain"
           priority
+          unoptimized
         />
       </span>
       {!compact && (

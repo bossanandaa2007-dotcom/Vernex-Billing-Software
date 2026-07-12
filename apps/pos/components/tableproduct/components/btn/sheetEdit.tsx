@@ -189,7 +189,10 @@ export function SheetEdit({
 
   return (
     <Sheet open={open}>
-      <SheetContent showCloseButton={false}>
+      <SheetContent
+        showCloseButton={false}
+        className="flex w-full max-w-full flex-col gap-0 overflow-y-auto sm:max-w-md"
+      >
         <SheetHeader>
           <SheetTitle>Edit product</SheetTitle>
           <SheetDescription>
