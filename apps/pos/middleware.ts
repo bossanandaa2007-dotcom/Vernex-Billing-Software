@@ -63,8 +63,8 @@ function requiredModules(request: NextRequest): ModuleKey[] {
     };
     return detailModules[type ?? ''] ? ['reports', detailModules[type ?? '']!] : ['reports'];
   }
-  const module = [...pageModules, ...apiModules].find(([prefix]) => matches(pathname, prefix))?.[1];
-  return module ? [module] : [];
+  const requiredModule = [...pageModules, ...apiModules].find(([prefix]) => matches(pathname, prefix))?.[1];
+  return requiredModule ? [requiredModule] : [];
 }
 
 function requiresAuthenticatedContext(pathname: string) {

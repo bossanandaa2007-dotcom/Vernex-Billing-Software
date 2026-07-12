@@ -14,6 +14,8 @@
     productId: string;
     quantity: number;
     transactionId: string;
+    productName?: string;
+    unitPrice?: number;
     product: Product;
   }
   

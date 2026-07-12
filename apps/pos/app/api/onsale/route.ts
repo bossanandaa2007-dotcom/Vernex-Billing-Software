@@ -153,19 +153,69 @@ export async function POST(request: Request) {
     return response;
   }
 
-  const { productId, transactionId, qTy } = parsed.data;
+  const { productId, transactionId, qTy, variantId } = parsed.data;
   try {
     routeProfile.supabaseClientStart = Date.now();
     const supabase = await createServerClient(request);
     routeProfile.supabaseClientEnd = Date.now();
     routeProfile.rpcStart = Date.now();
-    const { data: line, error } = await supabase.rpc('add_product_to_bill', {
-      p_transaction_id: transactionId,
-      p_product_id: productId,
-      p_quantity: qTy,
-    });
+    let line: unknown;
+    if (variantId) {
+      const [transactionResult, productResult, variantResult, existingLinesResult] = await Promise.all([
+        supabase.from('Transaction').select('id,businessId,isComplete').eq('id', transactionId).eq('businessId', ctx.businessId).maybeSingle(),
+        supabase.from('Product').select('productId,sellprice,productstock:ProductStock!inner(id,name,price,stock,businessId)').eq('productId', productId).eq('productstock.businessId', ctx.businessId).maybeSingle(),
+        supabase.from('ProductVariant').select('id,productId,businessId,name,price,sku').eq('id', variantId).eq('productId', productId).eq('businessId', ctx.businessId).maybeSingle(),
+        supabase.from('OnSaleProduct').select('id,productId,productName,quantity').eq('transactionId', transactionId).eq('productId', productId),
+      ]);
+      const transaction = transactionResult.data;
+      const product = productResult.data;
+      const variant = variantResult.data;
+      if (!transaction || transaction.isComplete) throw new Error('Bill is missing or already completed.');
+      if (!product || !variant) throw new Error('Product is not sellable.');
+
+      const productStock = Array.isArray(product.productstock) ? product.productstock[0] : product.productstock;
+      const variantLineName = `${productStock.name} - ${variant.name}`;
+      const existingLines = existingLinesResult.data ?? [];
+      const totalExistingQuantity = existingLines.reduce((sum, item) => sum + Number(item.quantity ?? 0), 0);
+      if (totalExistingQuantity + qTy > productStock.stock) {
+        throw new Error(`Only ${productStock.stock} units are available.`);
+      }
+      const existingVariantLine = existingLines.find((item) => item.productName === variantLineName);
+      if (existingVariantLine) {
+        const { data, error } = await supabase
+          .from('OnSaleProduct')
+          .update({ quantity: Number(existingVariantLine.quantity ?? 0) + qTy })
+          .eq('id', existingVariantLine.id)
+          .select('*')
+          .single();
+        if (error) throw error;
+        line = data;
+      } else {
+        const { data, error } = await supabase
+          .from('OnSaleProduct')
+          .insert({
+            transactionId,
+            productId,
+            quantity: qTy,
+            productName: variantLineName,
+            unitPrice: variant.price,
+            costPrice: productStock.price,
+          })
+          .select('*')
+          .single();
+        if (error) throw error;
+        line = data;
+      }
+    } else {
+      const { data, error } = await supabase.rpc('add_product_to_bill', {
+        p_transaction_id: transactionId,
+        p_product_id: productId,
+        p_quantity: qTy,
+      });
+      if (error) throw error;
+      line = data;
+    }
     routeProfile.rpcEnd = Date.now();
-    if (error) throw error;
 
     routeProfile.responseStart = Date.now();
     const responseObjectStart = nowMs();

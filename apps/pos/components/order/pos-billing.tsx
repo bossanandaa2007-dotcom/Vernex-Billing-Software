@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ReceiptPreview } from '@/components/receipt/ReceiptPreview';
 import { useSubscriptionStatus } from '@/components/subscription/useSubscriptionStatus';
 import { formatMoney } from '@/lib/currency';
@@ -47,6 +48,14 @@ type ProductDetail = {
   sellprice: number;
 };
 
+type ProductVariant = {
+  id: string;
+  name: string;
+  price: number;
+  sku?: string | null;
+  sortOrder?: number | null;
+};
+
 type ProductStock = {
   id: string;
   name: string;
@@ -55,6 +64,7 @@ type ProductStock = {
   stock: number;
   cat: string;
   Product: ProductDetail[];
+  variants?: ProductVariant[];
 };
 
 type ProductsResponse = {
@@ -89,6 +99,7 @@ type ShopSettings = ReceiptShop & {
 
 const ALL = 'ALL';
 const LOW_STOCK_LIMIT = 10;
+const onlyDigits = (value: string) => value.replace(/\D/g, '');
 
 export function PosBilling() {
   const { isBlocked, expiredMessage } = useSubscriptionStatus();
@@ -121,6 +132,9 @@ export function PosBilling() {
   const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([]);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [activeOverlay, setActiveOverlay] = useState<'bill' | 'summary' | null>(null);
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
+  const [variantProduct, setVariantProduct] = useState<ProductStock | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState('');
 
   useEffect(() => {
     const stored = localStorage.getItem('transactionId');
@@ -145,7 +159,7 @@ export function PosBilling() {
       if (brand !== ALL) params.brand = brand;
       const response = await axios.get<ProductsResponse>('/api/storage', { params });
       setProducts((current) => append ? [...current, ...response.data.data] : response.data.data);
-      setServerCategories(response.data.categories ?? []);
+      if (response.data.categories) setServerCategories(response.data.categories);
       setProductPage(response.data.metadata.page);
       setProductHasNext(response.data.metadata.hasNextPage);
     } catch {
@@ -175,13 +189,23 @@ export function PosBilling() {
     }
   }, [transactionId]);
 
-  useEffect(() => {
-    fetchProducts();
+  const loadShopData = useCallback(() => {
     getShopData().then((data) => {
       const nextShop = data.data ?? {};
       setShop(nextShop);
     }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
   }, [fetchProducts]);
+
+  // Keep shop settings (receipt logo, footer, etc.) in sync when saved elsewhere.
+  useEffect(() => {
+    loadShopData();
+    eventBus.on('fetchStoreData', loadShopData);
+    return () => { eventBus.removeListener('fetchStoreData', loadShopData); };
+  }, [loadShopData]);
 
   const fetchCustomers = useCallback(async () => {
     if (customersLoaded || loadingCustomers) return;
@@ -224,7 +248,7 @@ export function PosBilling() {
   const currency = shop.currency ?? 'INR';
   const country = shop.country ?? 'India';
   const subtotal = useMemo(
-    () => transactionData.reduce((sum, item) => sum + item.product.sellprice * item.quantity, 0),
+    () => transactionData.reduce((sum, item) => sum + (Number(item.unitPrice ?? item.product.sellprice) * item.quantity), 0),
     [transactionData]
   );
   const tax = taxMode === 'NONE' ? 0 : subtotal * (taxRate / 100);
@@ -254,16 +278,15 @@ export function PosBilling() {
     return id;
   };
 
-  const addProduct = async (productId: string, quantity = 1) => {
+  const addProductToCart = async (product: ProductStock, quantity = 1, variantId?: string) => {
     if (isBlocked) return toast.error(expiredMessage);
-    const product = products.find((item) => item.id === productId);
     if (!product || product.stock <= 0) return toast.error('This product is out of stock.');
     setMutating(true);
     const clickStart = performance.now();
     try {
       const id = await ensureTransaction();
       const postStart = performance.now();
-      const postResponse = await axios.post('/api/onsale', { productId, transactionId: id, qTy: quantity });
+      const postResponse = await axios.post('/api/onsale', { productId: product.id, variantId, transactionId: id, qTy: quantity });
       const postEnd = performance.now();
       setLastRemoved(null);
       const refreshStart = performance.now();
@@ -277,13 +300,34 @@ export function PosBilling() {
         followUpTransactionFetchMs: Math.round(refreshEnd - refreshStart),
         totalAddProductFlowMs: Math.round(refreshEnd - clickStart),
       });
-      toast.success(`${product.name} added to bill.`);
+      const selectedVariant = product.variants?.find((variant) => variant.id === variantId);
+      toast.success(`${selectedVariant ? `${product.name} - ${selectedVariant.name}` : product.name} added to bill.`);
     } catch (error) {
       toast.error(userFacingError(axios.isAxiosError(error) ? error.response?.data : error, 'Unable to add this product. Please try again.'));
     } finally {
       setMutating(false);
-      searchRef.current?.focus();
     }
+  };
+
+  const addProduct = async (productId: string, quantity = 1) => {
+    const product = products.find((item) => item.id === productId);
+    if (!product) return toast.error('This product is unavailable.');
+    const variants = product.variants ?? [];
+    if (variants.length) {
+      setVariantProduct(product);
+      setSelectedVariantId(variants[0]?.id ?? '');
+      return;
+    }
+    await addProductToCart(product, quantity);
+  };
+
+  const addSelectedVariant = async () => {
+    if (!variantProduct || !selectedVariantId) return;
+    const product = variantProduct;
+    const variantId = selectedVariantId;
+    setVariantProduct(null);
+    setSelectedVariantId('');
+    await addProductToCart(product, 1, variantId);
   };
 
   const updateQuantity = async (line: TransactionData, quantity: number) => {
@@ -293,10 +337,32 @@ export function PosBilling() {
       await axios.patch(`/api/onsale/${line.id}`, { qTy: quantity });
       await fetchTransactionData();
     } catch (error) {
+      await fetchTransactionData();
       toast.error(userFacingError(axios.isAxiosError(error) ? error.response?.data : error, 'Unable to update the quantity. Please try again.'));
     } finally {
       setMutating(false);
     }
+  };
+
+  const commitQuantityDraft = async (line: TransactionData) => {
+    const draft = quantityDrafts[line.id];
+    if (draft === undefined) return;
+    const trimmed = draft.trim();
+    setQuantityDrafts((current) => {
+      const next = { ...current };
+      delete next[line.id];
+      return next;
+    });
+    if (!trimmed) return;
+    const quantity = Number(trimmed);
+    if (!Number.isFinite(quantity)) return;
+    const nextQuantity = Math.max(1, Math.floor(quantity));
+    const availableStock = Number(line.product.productstock.stock ?? 0);
+    if (availableStock > 0 && nextQuantity > availableStock) {
+      toast.error(`Only ${availableStock} units are available.`);
+      return;
+    }
+    await updateQuantity(line, nextQuantity);
   };
 
   const removeLine = async (line: TransactionData) => {
@@ -306,7 +372,7 @@ export function PosBilling() {
       setLastRemoved({
         productId: line.productId,
         quantity: line.quantity,
-        name: line.product.productstock.name,
+        name: line.productName ?? line.product.productstock.name,
       });
       await fetchTransactionData();
       toast.info('Item removed. Undo is available.');
@@ -420,7 +486,7 @@ export function PosBilling() {
   });
 
   return (
-    <div className="relative w-full pb-24">
+    <div className="relative w-full pb-44 md:pb-40">
       <section className="mx-auto w-full max-w-7xl space-y-4">
         <Card className="overflow-hidden border-vernex-border/80 shadow-sm">
           <CardHeader className="space-y-4 bg-white/80 pb-4 dark:bg-vernex-navy/60">
@@ -460,12 +526,13 @@ export function PosBilling() {
               </Select>
             </div>
           </CardHeader>
-          <CardContent className="min-h-[520px] overflow-auto p-3 pb-40 md:p-4 md:pb-28">
+          <CardContent className="min-h-[520px] overflow-auto p-3 pb-56 md:p-4 md:pb-48">
             {loadingProducts ? <ProductSkeleton /> : filteredProducts.length ? (
               <>
-                <div className="grid grid-cols-2 gap-2.5 md:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2 md:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
                   {filteredProducts.map((product) => {
-              const price = product.Product[0]?.sellprice ?? 0;
+              const variants = product.variants ?? [];
+              const price = variants[0]?.price ?? product.Product[0]?.sellprice ?? 0;
               const out = product.stock <= 0;
               const low = product.stock > 0 && product.stock <= LOW_STOCK_LIMIT;
               return (
@@ -474,28 +541,28 @@ export function PosBilling() {
                   type="button"
                   disabled={out || mutating}
                   onClick={() => addProduct(product.id)}
-                  className="group relative flex aspect-[0.92] min-h-0 flex-col rounded-xl border border-vernex-border bg-white p-2 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 md:aspect-auto md:min-h-[170px] md:rounded-2xl md:p-4 dark:border-[#1E335F] dark:bg-vernex-navy"
+                  className="group relative flex min-h-[74px] flex-col rounded-xl border border-vernex-border bg-white p-1.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[86px] sm:p-2 md:min-h-[170px] md:rounded-2xl md:p-4 dark:border-[#1E335F] dark:bg-vernex-navy"
                 >
-                  <div className="flex min-h-0 flex-1 flex-col gap-1.5 md:flex-row md:gap-4">
-                    <div className="relative grid h-10 w-full shrink-0 place-items-center overflow-hidden rounded-lg bg-vernex-surface md:h-24 md:w-24 md:rounded-xl dark:bg-vernex-dark">
+                  <div className="flex min-h-0 flex-1 items-start gap-1.5 md:flex-row md:gap-4">
+                    <div className="relative grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-vernex-surface sm:h-9 sm:w-9 md:h-24 md:w-24 md:rounded-xl dark:bg-vernex-dark">
                       {product.imageProduct ? (
                         <Image src={product.imageProduct} alt={product.name} fill className="object-cover" sizes="96px" />
                       ) : (
-                        <ShoppingBag className="h-5 w-5 text-emerald-600 md:h-8 md:w-8" />
+                        <ShoppingBag className="h-3.5 w-3.5 text-emerald-600 sm:h-4 sm:w-4 md:h-8 md:w-8" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="line-clamp-2 text-xs font-bold leading-snug text-vernex-text md:text-base dark:text-white">{product.name}</div>
+                      <div className="line-clamp-2 min-h-[22px] break-words text-[10px] font-bold leading-tight text-vernex-text sm:min-h-[26px] sm:text-xs md:min-h-0 md:text-base dark:text-white">{product.name}</div>
                       <div className="mt-1 hidden text-xs text-vernex-muted md:block dark:text-slate-400">SKU: {product.id}</div>
-                      <div className="mt-0.5 text-sm font-black leading-tight text-vernex-navy md:mt-3 md:text-base dark:text-vernex-gold">{formatMoney(price, currency)}</div>
+                      <div className="mt-0.5 text-[11px] font-black leading-tight text-vernex-navy sm:text-sm md:mt-3 md:text-base dark:text-vernex-gold">{formatMoney(price, currency)}</div>
                     </div>
                   </div>
-                  <div className="mt-1.5 flex items-center justify-between gap-2 md:mt-4 md:gap-3">
-                      <Badge variant={out ? 'destructive' : low ? 'secondary' : 'outline'} className="max-w-[76px] truncate rounded-full px-1.5 text-[9px] leading-4 md:max-w-none md:px-2.5 md:text-xs">
-                        {out ? 'Out of stock' : low ? 'Low stock' : product.cat}
+                  <div className="mt-0.5 flex items-center justify-between gap-1.5 md:mt-4 md:gap-3">
+                      <Badge variant={out ? 'destructive' : low ? 'secondary' : 'outline'} className="max-w-[68px] truncate rounded-full px-1.5 text-[8px] leading-4 sm:max-w-[84px] sm:text-[9px] md:max-w-none md:px-2.5 md:text-xs">
+                        {out ? 'Out' : variants.length ? 'Variants' : product.cat}
                       </Badge>
-                    <span className="absolute bottom-2 right-2 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-600 text-white shadow-sm transition group-hover:bg-emerald-700 md:static md:h-9 md:w-9">
-                      <Plus className="h-4 w-4 md:h-5 md:w-5" />
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-emerald-600 text-white shadow-sm transition group-hover:bg-emerald-700 sm:h-7 sm:w-7 md:h-9 md:w-9">
+                      <Plus className="h-3.5 w-3.5 md:h-5 md:w-5" />
                     </span>
                   </div>
                 </button>
@@ -527,8 +594,8 @@ export function PosBilling() {
         </Card>
       </section>
 
-      <div className="fixed bottom-[calc(72px+0.75rem)] left-3 right-3 z-30 md:bottom-4 md:left-4 md:right-4 lg:left-[calc(280px+1rem)]">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-2xl border border-vernex-border bg-white p-3 shadow-xl dark:border-[#1E335F] dark:bg-vernex-navy">
+      <div className="pointer-events-none fixed bottom-[calc(72px+1rem)] left-3 right-3 z-30 md:bottom-5 md:left-4 md:right-4 lg:left-[calc(280px+1rem)]">
+        <div className="pointer-events-auto mx-auto flex max-w-5xl items-center justify-between gap-2 rounded-2xl border border-vernex-border bg-white p-3 shadow-lg dark:border-[#1E335F] dark:bg-vernex-navy">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-full bg-emerald-600 text-white">
               <ShoppingCart className="h-5 w-5" />
@@ -591,25 +658,37 @@ export function PosBilling() {
                 </thead>
                 <tbody>
                   {transactionData.map((line) => {
-                    const lineSubtotal = line.product.sellprice * line.quantity;
+                    const linePrice = Number(line.unitPrice ?? line.product.sellprice);
+                    const lineName = line.productName ?? line.product.productstock.name;
+                    const lineSubtotal = linePrice * line.quantity;
                     const lineTax = taxMode === 'NONE' ? 0 : lineSubtotal * (taxRate / 100);
                     return (
                       <tr key={line.id} className="border-t border-vernex-border bg-white transition hover:bg-vernex-surface/70 dark:border-[#1E335F] dark:bg-vernex-navy/70 dark:hover:bg-vernex-navy">
                         <td className="px-4 py-3">
-                          <div className="font-semibold text-vernex-text dark:text-white">{line.product.productstock.name}</div>
+                          <div className="font-semibold text-vernex-text dark:text-white">{lineName}</div>
                           <div className="text-xs text-vernex-muted dark:text-slate-400">{line.product.productstock.cat}</div>
                         </td>
                         <td className="px-3 py-3 text-xs text-vernex-muted">{line.productId}</td>
-                        <td className="px-3 py-3 text-right">{formatMoney(line.product.sellprice, currency)}</td>
+                        <td className="px-3 py-3 text-right">{formatMoney(linePrice, currency)}</td>
                         <td className="px-3 py-3">
                           <div className="mx-auto flex w-32 items-center justify-center rounded-lg border border-vernex-border bg-white dark:border-[#1E335F] dark:bg-vernex-dark">
                             <button className="p-2" onClick={() => updateQuantity(line, line.quantity - 1)} aria-label="Decrease quantity"><Minus className="h-4 w-4" /></button>
                             <input
                               className="h-9 w-12 bg-transparent text-center font-semibold outline-none"
-                              type="number"
-                              min="1"
-                              value={line.quantity}
-                              onChange={(event) => updateQuantity(line, Number(event.target.value))}
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={quantityDrafts[line.id] ?? String(line.quantity)}
+                              onChange={(event) => {
+                                const value = event.target.value.replace(/\D/g, '');
+                                setQuantityDrafts((current) => ({ ...current, [line.id]: value }));
+                              }}
+                              onBlur={() => commitQuantityDraft(line)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  event.currentTarget.blur();
+                                }
+                              }}
                             />
                             <button className="p-2" onClick={() => updateQuantity(line, line.quantity + 1)} aria-label="Increase quantity"><Plus className="h-4 w-4" /></button>
                           </div>
@@ -622,7 +701,7 @@ export function PosBilling() {
                             variant="ghost"
                             size="icon"
                             onClick={() => removeLine(line)}
-                            aria-label={`Remove ${line.product.productstock.name} from bill`}
+                            aria-label={`Remove ${lineName} from bill`}
                           >
                             <X className="h-4 w-4" />
                           </Button>
@@ -700,7 +779,14 @@ export function PosBilling() {
               <div>
                 <Input placeholder="Quick customer name" value={customer.name} onChange={(event) => setCustomer((current) => ({ ...current, name: event.target.value }))} />
               </div>
-              <Input placeholder="Phone" value={customer.phone} onChange={(event) => setCustomer((current) => ({ ...current, phone: event.target.value }))} />
+              <Input
+                placeholder="Phone"
+                value={customer.phone}
+                onChange={(event) => setCustomer((current) => ({ ...current, phone: onlyDigits(event.target.value) }))}
+                autoComplete="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
+              />
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                 <div><Label>Discount</Label><Input className="mt-1" type="number" min="0" value={discount} onChange={(event) => setDiscount(event.target.value)} /></div>
                 <div><Label>Payment</Label><Select value={paymentMethod} onValueChange={(value) => {
@@ -734,6 +820,55 @@ export function PosBilling() {
       </aside>
         </div>
       )}
+      <Dialog open={!!variantProduct} onOpenChange={(open) => {
+        if (!open) {
+          setVariantProduct(null);
+          setSelectedVariantId('');
+        }
+      }}>
+        <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>{variantProduct?.name}</DialogTitle>
+            <DialogDescription>Choose a variant to add to the current bill.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {(variantProduct?.variants ?? []).map((variant) => (
+              <button
+                key={variant.id}
+                type="button"
+                onClick={() => setSelectedVariantId(variant.id)}
+                className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${
+                  selectedVariantId === variant.id
+                    ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/10'
+                    : 'border-vernex-border bg-white hover:border-emerald-400'
+                } dark:border-[#1E335F] dark:bg-vernex-navy`}
+              >
+                <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
+                  selectedVariantId === variant.id ? 'border-emerald-600' : 'border-vernex-border'
+                }`}>
+                  {selectedVariantId === variant.id && <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-vernex-text dark:text-white">{variant.name}</div>
+                  {variant.sku ? <div className="text-xs text-vernex-muted dark:text-slate-400">SKU: {variant.sku}</div> : null}
+                </div>
+                <div className="font-black text-vernex-navy dark:text-vernex-gold">{formatMoney(Number(variant.price), currency)}</div>
+              </button>
+            ))}
+          </div>
+          <DialogFooter className="grid grid-cols-2 gap-2 sm:flex">
+            <Button variant="outline" onClick={() => {
+              setVariantProduct(null);
+              setSelectedVariantId('');
+            }}>
+              Cancel
+            </Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={addSelectedVariant} disabled={!selectedVariantId || mutating}>
+              Add to Cart
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <ReceiptPreview open={receiptOpen} onOpenChange={setReceiptOpen} sale={receiptSale} items={receiptItems} shop={shop} />
     </div>
   );

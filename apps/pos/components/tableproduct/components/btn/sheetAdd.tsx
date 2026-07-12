@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetDescription,
   SheetFooter,
@@ -18,6 +17,14 @@ import { z } from 'zod';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
+import { Plus, Trash2 } from 'lucide-react';
+
+type VariantForm = {
+  name: string;
+  price: string;
+  sku: string;
+};
+
 export function SheetAdd({
   open,
   onClose,
@@ -29,6 +36,8 @@ export function SheetAdd({
   const [sellPrice, setSellPrice] = useState('');
   const [buyPrice, setBuyPrice] = useState('');
   const [categoryProduct, setCategories] = useState<string>('');
+  const [hasVariants, setHasVariants] = useState(false);
+  const [variants, setVariants] = useState<VariantForm[]>([{ name: '', price: '', sku: '' }]);
   const [error, setError] = useState<{ [key: string]: string }>({});
   const buyPriceNumber = parseFloat(buyPrice) || 0;
   const sellPriceNumber = parseFloat(sellPrice) || 0;
@@ -41,6 +50,8 @@ export function SheetAdd({
       setSellPrice('');
       setBuyPrice('');
       setCategories('');
+      setHasVariants(false);
+      setVariants([{ name: '', price: '', sku: '' }]);
     }
   }, [open]);
   const handleCancel = () => {
@@ -65,6 +76,14 @@ export function SheetAdd({
         buyPrice: buyPriceNumber,
         sellPrice: sellPriceNumber,
         category: categoryProduct,
+        hasVariants,
+        variants: hasVariants
+          ? variants.map((variant) => ({
+              name: variant.name,
+              price: parseFloat(variant.price) || 0,
+              sku: variant.sku,
+            }))
+          : [],
       });
 
       // Send validated data using axios
@@ -90,6 +109,19 @@ export function SheetAdd({
     } finally {
       setLoading(false);
     }
+  };
+
+  const updateVariant = (index: number, field: keyof VariantForm, value: string) => {
+    setVariants((current) => current.map((variant, variantIndex) => (
+      variantIndex === index ? { ...variant, [field]: value } : variant
+    )));
+    setError((current) => ({ ...current, variants: '' }));
+  };
+
+  const addVariant = () => setVariants((current) => [...current, { name: '', price: '', sku: '' }]);
+
+  const removeVariant = (index: number) => {
+    setVariants((current) => current.length > 1 ? current.filter((_, variantIndex) => variantIndex !== index) : current);
   };
 
   return (
@@ -179,26 +211,60 @@ export function SheetAdd({
                 {error.category}
               </div>
             )}
+            <Label htmlFor="hasVariants" className="text-right">
+              Has Variants
+            </Label>
+            <label className="col-span-3 flex items-center justify-between rounded-xl border border-vernex-border px-3 py-2 text-sm">
+              <span>Add size/options like Large, Medium, Regular</span>
+              <input
+                id="hasVariants"
+                type="checkbox"
+                checked={hasVariants}
+                onChange={(event) => setHasVariants(event.target.checked)}
+                className="h-5 w-5 accent-emerald-600"
+              />
+            </label>
+            {hasVariants && (
+              <div className="col-span-4 rounded-xl border border-vernex-border p-3">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="font-semibold">Variants</p>
+                  <Button type="button" variant="outline" size="sm" onClick={addVariant}>
+                    <Plus className="mr-2 h-4 w-4" /> Add Variant
+                  </Button>
+                </div>
+                <div className="space-y-3">
+                  {variants.map((variant, index) => (
+                    <div key={index} className="grid gap-2 rounded-lg bg-vernex-surface p-2 sm:grid-cols-[1fr_100px_1fr_auto]">
+                      <Input placeholder="Variant name" value={variant.name} onChange={(event) => updateVariant(index, 'name', event.target.value)} />
+                      <Input placeholder="Price" type="number" value={variant.price} onChange={(event) => updateVariant(index, 'price', event.target.value)} />
+                      <Input placeholder="SKU optional" value={variant.sku} onChange={(event) => updateVariant(index, 'sku', event.target.value)} />
+                      <Button type="button" variant="ghost" size="icon" onClick={() => removeVariant(index)} disabled={variants.length === 1}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                {error?.variants && <div className="mt-2 text-sm text-red-500">{error.variants}</div>}
+              </div>
+            )}
           </div>
         </div>
         <SheetFooter>
-          <SheetClose asChild>
-            <Button
-              onClick={handleAdd}
-              type="submit"
-              disabled={loading}
-              className="text-gray-100"
-            >
-              {loading ? (
-                <>
-                  <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
-                  Please wait
-                </>
-              ) : (
-                'Add Product'
-              )}
-            </Button>
-          </SheetClose>
+          <Button
+            onClick={handleAdd}
+            type="submit"
+            disabled={loading}
+            className="text-gray-100"
+          >
+            {loading ? (
+              <>
+                <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
+                Please wait
+              </>
+            ) : (
+              'Add Product'
+            )}
+          </Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

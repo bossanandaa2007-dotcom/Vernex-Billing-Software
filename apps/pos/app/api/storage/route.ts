@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
     const supabase = await createServerClient(request);
     let productQuery = supabase.from('ProductStock')
-      .select('id,name,imageProduct,price,stock,cat,Product!inner(sellprice)', { count: 'exact' })
+      .select('id,name,imageProduct,price,stock,cat,Product!inner(sellprice),variants:ProductVariant(id,name,price,sku,sortOrder)', { count: 'exact' })
       .eq('businessId', ctx.businessId)
       .order('name')
       .range(from, to);
@@ -29,13 +29,20 @@ export async function GET(request: Request) {
     if (category) productQuery = productQuery.eq('cat', category);
     if (brand) productQuery = productQuery.ilike('id', `${brand}%`);
 
+    // The category list only changes with the catalog, not with pagination or
+    // filters. Skip the full-table scan except on the initial unfiltered load.
+    const needCategories = page === 1 && !query && !category && !brand;
     const [productsResult, categoriesResult] = await Promise.all([
       productQuery,
-      supabase.from('ProductStock').select('cat').eq('businessId', ctx.businessId).order('cat'),
+      needCategories
+        ? supabase.from('ProductStock').select('cat').eq('businessId', ctx.businessId).order('cat')
+        : Promise.resolve({ data: null as { cat: string | null }[] | null }),
     ]);
     const { data: productStocks, error, count } = productsResult;
     if (error) throw error;
-    const categories = Array.from(new Set((categoriesResult.data ?? []).map((item) => item.cat).filter(Boolean)));
+    const categories = categoriesResult.data
+      ? Array.from(new Set(categoriesResult.data.map((item) => item.cat).filter(Boolean)))
+      : null;
     return NextResponse.json({
       data: productStocks ?? [],
       categories,

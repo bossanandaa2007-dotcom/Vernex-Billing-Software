@@ -21,14 +21,18 @@ interface ChartOneState {
   options: ApexOptions;
 }
 
-// Get today's date
-const today = new Date();
-
-const oneWeekAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
-
-// Format dates as yyyy-mm-dd strings
-const startDateString = oneWeekAgo.toISOString().split('T')[0];
-const endDateString = today.toISOString().split('T')[0];
+// Compute the default 7-day range on the client only. Deriving this at module
+// load (server evaluation time) and using it as the initial value of a
+// controlled <input> caused a hydration mismatch, because the client
+// re-evaluates `new Date()` at a different instant than the server.
+const defaultDateRange = () => {
+  const today = new Date();
+  const oneWeekAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+  return {
+    start: oneWeekAgo.toISOString().split('T')[0],
+    end: today.toISOString().split('T')[0],
+  };
+};
 
 const ChartFour: React.FC = () => {
   // State for chart data and date range
@@ -39,9 +43,16 @@ const ChartFour: React.FC = () => {
       grossIncomeWithTax: number;
     };
   }>({});
-  const [startDate, setStartDate] = useState<string>(startDateString);
-  const [endDate, setEndDate] = useState<string>(endDateString);
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [currency, setCurrency] = useState('INR');
+
+  // Initialise the default date range after mount to avoid an SSR/client hydration mismatch.
+  useEffect(() => {
+    const { start, end } = defaultDateRange();
+    setStartDate(start);
+    setEndDate(end);
+  }, []);
 
   useEffect(() => {
     axios.get('/api/shopdata').then((response) => setCurrency(response.data.data?.currency ?? 'INR')).catch(() => {});
@@ -111,6 +122,7 @@ const ChartFour: React.FC = () => {
 
   // Update chart categories when start or end date changes
   useEffect(() => {
+    if (!startDate || !endDate) return;
     const newCategories = generateDateRange(startDate, endDate);
 
     setState((prevState) => ({
@@ -127,6 +139,7 @@ const ChartFour: React.FC = () => {
 
   // Fetch data from the API
   const fetchData = useCallback(async () => {
+    if (!startDate || !endDate) return;
     try {
       const response = await axios.get(
         `/api/profit?start=${startDate}&end=${endDate}`

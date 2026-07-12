@@ -20,7 +20,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { productName, stockProduct, buyPrice, sellPrice, category } = parsed.data;
+  const { productName, stockProduct, buyPrice, sellPrice, category, hasVariants, variants } = parsed.data;
   try {
     const supabase = await createServerClient(request);
     const { data: stock, error } = await supabase
@@ -43,7 +43,24 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .select('*')
       .single();
     if (priceError) throw priceError;
-    const product = { ...stock, Product: [saleProduct] };
+    await supabase.from('ProductVariant').delete().eq('productId', id).eq('businessId', ctx.businessId);
+    let variantRows: unknown[] = [];
+    if (hasVariants && variants.length) {
+      const { data, error: variantError } = await supabase
+        .from('ProductVariant')
+        .insert(variants.map((variant, index) => ({
+          productId: id,
+          businessId: ctx.businessId,
+          name: variant.name.trim(),
+          price: variant.price,
+          sku: variant.sku?.trim() || null,
+          sortOrder: index,
+        })))
+        .select('*');
+      if (variantError) throw variantError;
+      variantRows = data ?? [];
+    }
+    const product = { ...stock, Product: [saleProduct], variants: variantRows };
     await writeAuditLog(ctx, { action: 'PRODUCT_UPDATED', entityType: 'ProductStock', entityId: product.id, description: `Updated product ${product.name}` });
     return NextResponse.json(product);
   } catch (error) {

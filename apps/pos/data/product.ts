@@ -20,7 +20,7 @@ export const fetchProduct = async ({
     const supabase = await createServerClient();
     let productsQuery = supabase
       .from('Product')
-      .select('id, productId, sellprice, productstock:ProductStock!inner(id,name,imageProduct,cat,stock,price,businessId)', { count: 'exact' })
+      .select('id, productId, sellprice, productstock:ProductStock!inner(id,name,imageProduct,cat,stock,price,businessId,variants:ProductVariant(id,name,price,sku,sortOrder))', { count: 'exact' })
       .eq('productstock.businessId', ctx.businessId)
       .range(skip, skip + take - 1);
     if (query) productsQuery = productsQuery.ilike('productstock.name', `%${query}%`);

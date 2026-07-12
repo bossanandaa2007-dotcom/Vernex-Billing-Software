@@ -27,16 +27,19 @@ export function useBusinessAccess() {
     };
   }, []);
 
-  const enabledModules = context?.user?.enabledModules ?? [];
   const role = context?.user?.role ?? null;
 
-  return useMemo(() => ({
-    context,
-    loading,
-    role,
-    enabledModules,
-    hasModuleAccess(module: ModuleKey) {
-      return hasModule(enabledModules, module);
-    },
-  }), [context, enabledModules, loading, role]);
+  return useMemo(() => {
+    const enabledModules = context?.user?.enabledModules ?? [];
+
+    return {
+      context,
+      loading,
+      role,
+      enabledModules,
+      hasModuleAccess(module: ModuleKey) {
+        return hasModule(enabledModules, module);
+      },
+    };
+  }, [context, loading, role]);
 }

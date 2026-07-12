@@ -9,6 +9,7 @@ import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { ImagePlus, Loader2, Trash2 } from 'lucide-react';
+import NextImage from 'next/image';
 
 type Values = { phone: string; address: string; taxId: string; receiptFooter: string; receiptLogo: string };
 const MAX_LOGO_BYTES = 120 * 1024;
@@ -60,7 +61,7 @@ export default function ReceiptSettings(props: Values) {
         <Label>Receipt Logo</Label>
         <div className="mt-2 flex flex-col gap-3 rounded-xl border border-vernex-border p-3 dark:border-[#1E335F] sm:flex-row sm:items-center">
           <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-lg bg-vernex-surface dark:bg-vernex-dark">
-            {values.receiptLogo ? <img src={values.receiptLogo} alt="Receipt logo preview" className="h-full w-full object-contain" /> : <ImagePlus className="h-7 w-7 text-vernex-muted" />}
+            {values.receiptLogo ? <NextImage src={values.receiptLogo} alt="Receipt logo preview" width={80} height={80} unoptimized className="h-full w-full object-contain" /> : <ImagePlus className="h-7 w-7 text-vernex-muted" />}
           </div>
           <div className="flex-1 text-sm text-vernex-muted dark:text-slate-300">
             <p>PNG, JPG, or WebP. Max 120KB. Max 512 x 512 px.</p>

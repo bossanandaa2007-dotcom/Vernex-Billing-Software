@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { productName, stockProduct, buyPrice, sellPrice, category } = parsed.data;
+  const { productName, stockProduct, buyPrice, sellPrice, category, hasVariants, variants } = parsed.data;
   const id = `PRD-${randomUUID().slice(0, 8)}`;
 
   try {
@@ -47,7 +47,26 @@ export async function POST(request: Request) {
       await supabase.from('ProductStock').delete().eq('id', id);
       throw productError;
     }
-    const product = { ...stock, Product: [saleProduct] };
+    let variantRows: unknown[] = [];
+    if (hasVariants && variants.length) {
+      const { data, error } = await supabase
+        .from('ProductVariant')
+        .insert(variants.map((variant, index) => ({
+          productId: id,
+          businessId: ctx.businessId,
+          name: variant.name.trim(),
+          price: variant.price,
+          sku: variant.sku?.trim() || null,
+          sortOrder: index,
+        })))
+        .select('*');
+      if (error) {
+        await supabase.from('ProductStock').delete().eq('id', id);
+        throw error;
+      }
+      variantRows = data ?? [];
+    }
+    const product = { ...stock, Product: [saleProduct], variants: variantRows };
     await writeAuditLog(ctx, { action: 'PRODUCT_CREATED', entityType: 'ProductStock', entityId: product.id, description: `Created product ${product.name}` });
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
