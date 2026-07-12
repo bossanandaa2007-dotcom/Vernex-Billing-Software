@@ -122,43 +122,45 @@ export default async function TableProduct(props: PageProps) {
       </CardHeader>
       <CardContent className="min-h-[520px] p-3 pb-28 md:p-4">
         {data.length ? (
-          <div className="grid grid-cols-2 gap-2.5 md:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 md:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
             {data.map((item) => {
+              const variants = item.productstock.variants ?? [];
+              const displayPrice = variants[0]?.price ?? item.sellprice;
               return (
                 <article
                   key={item.id}
-                  className="group relative flex aspect-[0.92] min-h-0 flex-col rounded-xl border border-vernex-border bg-white p-2 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-md md:aspect-auto md:min-h-[190px] md:rounded-2xl md:p-4 dark:border-[#1E335F] dark:bg-vernex-dark"
+                  className="group relative flex min-h-[74px] flex-col rounded-xl border border-vernex-border bg-white p-1.5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-md sm:min-h-[86px] sm:p-2 md:min-h-[190px] md:rounded-2xl md:p-4 dark:border-[#1E335F] dark:bg-vernex-dark"
                 >
-                  <div className="absolute right-1.5 top-1.5 z-10 md:right-3 md:top-3">
+                  <div className="absolute right-1 top-1 z-10 md:right-3 md:top-3">
                     <Dropdown product={item} />
                   </div>
-                  <div className="flex min-h-0 flex-1 flex-col gap-1.5 md:flex-row md:gap-4 md:pr-8">
-                    <div className="relative grid h-10 w-full shrink-0 place-items-center overflow-hidden rounded-lg bg-vernex-surface md:h-24 md:w-24 md:rounded-xl dark:bg-vernex-navy">
+                  <div className="flex min-h-0 flex-1 items-start gap-1.5 pr-5 md:flex-row md:gap-4 md:pr-8">
+                    <div className="relative grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-vernex-surface sm:h-9 sm:w-9 md:h-24 md:w-24 md:rounded-xl dark:bg-vernex-navy">
                       {item.productstock.imageProduct ? (
                         <Image src={item.productstock.imageProduct} alt={item.productstock.name} fill className="object-cover" sizes="96px" />
                       ) : (
-                        <ShoppingBag className="h-5 w-5 text-emerald-600 md:h-8 md:w-8" />
+                        <ShoppingBag className="h-3.5 w-3.5 text-emerald-600 sm:h-4 sm:w-4 md:h-8 md:w-8" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="line-clamp-2 pr-5 text-xs font-bold leading-snug text-vernex-text md:pr-0 md:text-base dark:text-white">
+                      <h3 className="line-clamp-2 min-h-[22px] break-words text-[10px] font-bold leading-tight text-vernex-text sm:min-h-[26px] sm:text-xs md:min-h-0 md:text-base dark:text-white">
                         {item.productstock.name}
                       </h3>
                       <p className="mt-1 hidden text-xs text-vernex-muted md:block dark:text-slate-400">
                         SKU: {item.productstock.id}
                       </p>
-                      <p className="mt-0.5 text-sm font-black leading-tight text-vernex-navy md:mt-3 md:text-base dark:text-vernex-gold">
-                        {formatMoney(item.sellprice, currency)}
+                      <p className="mt-0.5 text-[11px] font-black leading-tight text-vernex-navy sm:text-sm md:mt-3 md:text-base dark:text-vernex-gold">
+                        {formatMoney(displayPrice, currency)}
                       </p>
-                      <p className="mt-0.5 text-[10px] leading-4 text-vernex-muted md:mt-1 md:text-xs dark:text-slate-400">
+                      <p className="hidden md:mt-1 md:block md:text-xs md:leading-4 md:text-vernex-muted dark:text-slate-400">
                         Cost: {formatMoney(item.productstock.price, currency)}
                       </p>
                     </div>
                   </div>
-                  <div className="mt-1.5 flex items-center justify-between gap-2 md:mt-4 md:gap-3">
+                  <div className="mt-0.5 flex items-center justify-between gap-1.5 md:mt-4 md:gap-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline" className="max-w-[76px] truncate rounded-full px-1.5 text-[9px] leading-4 md:max-w-none md:px-2.5 md:text-xs">
-                        {item.productstock.cat}
+                      <Badge variant="outline" className="max-w-[68px] truncate rounded-full px-1.5 text-[8px] leading-4 sm:max-w-[84px] sm:text-[9px] md:max-w-none md:px-2.5 md:text-xs">
+                        {variants.length ? `${variants.length} variants` : item.productstock.cat}
                       </Badge>
                     </div>
                   </div>

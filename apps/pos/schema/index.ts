@@ -26,9 +26,25 @@ export const productSchema = z
       .trim()
       .min(1, 'Category cannot be empty')
       .max(40, 'Category must be 40 characters or fewer'),
+    hasVariants: z.boolean().optional().default(false),
+    variants: z.array(z.object({
+      name: z.string().trim().min(1, 'Variant name is required').max(80, 'Variant name is too long'),
+      price: z.number().nonnegative('Variant price cannot be negative'),
+      sku: z.string().trim().max(80, 'SKU is too long').optional().or(z.literal('')),
+    })).optional().default([]),
+  })
+  .superRefine((value, ctx) => {
+    if (value.hasVariants && !value.variants.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['variants'],
+        message: 'Add at least one variant.',
+      });
+    }
   });
 export const onsaleSchema = z.object({
   productId: z.string().min(1, 'Select Product'),
+  variantId: z.string().optional(),
   qTy: z.number().int('Qty must be a whole number').positive('Qty must be a positive number'),
   transactionId: z.string().min(1, 'Transaction Id is Empty'),
 });
@@ -56,7 +72,7 @@ export const checkoutSchema = z.object({
   paymentMethod: z.enum(['CASH', 'UPI', 'CARD', 'CREDIT', 'ONLINE']),
   amountReceived: z.number().nonnegative(),
   customerName: z.string().trim().max(120).optional().or(z.literal('')),
-  customerPhone: z.string().trim().max(30).regex(/^[+\d\s()-]*$/, 'Invalid phone number').optional().or(z.literal('')),
+  customerPhone: z.string().trim().max(30).regex(/^\d*$/, 'Invalid phone number').optional().or(z.literal('')),
   customerEmail: z.string().trim().email('Invalid email').max(160).optional().or(z.literal('')),
   customerAddress: z.string().trim().max(500).optional().or(z.literal('')),
   customerTaxId: z.string().trim().max(40).optional().or(z.literal('')),

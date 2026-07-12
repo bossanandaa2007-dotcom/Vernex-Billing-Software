@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetDescription,
   SheetFooter,
@@ -18,6 +17,15 @@ import { z } from 'zod';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
+import { Plus, Trash2 } from 'lucide-react';
+
+type VariantForm = {
+  id?: string;
+  name: string;
+  price: string;
+  sku: string;
+};
+
 type Data = {
   id: string;
   sellprice: number;
@@ -27,6 +35,13 @@ type Data = {
     cat: string;
     stock: number;
     price: number;
+    variants?: Array<{
+      id: string;
+      name: string;
+      price: number;
+      sku?: string | null;
+      sortOrder?: number | null;
+    }>;
   };
 };
 
@@ -45,6 +60,17 @@ export function SheetEdit({
   );
   const [sellPrice, setSellPrice] = useState(data.sellprice || '');
   const [buyPrice, setBuyPrice] = useState(data.productstock.price || '');
+  const [hasVariants, setHasVariants] = useState(Boolean(data.productstock.variants?.length));
+  const [variants, setVariants] = useState<VariantForm[]>(
+    data.productstock.variants?.length
+      ? data.productstock.variants.map((variant) => ({
+          id: variant.id,
+          name: variant.name,
+          price: String(variant.price),
+          sku: variant.sku ?? '',
+        }))
+      : [{ name: '', price: '', sku: '' }]
+  );
   const [error, setError] = useState<{ [key: string]: string }>({});
 
   const buyPriceNumber = parseFloat(String(buyPrice)) || 0;
@@ -60,6 +86,16 @@ export function SheetEdit({
       setSellPrice(data.sellprice || '');
       setBuyPrice(data.productstock.price || '');
       setCategories(data.productstock.cat ?? '');
+      setHasVariants(Boolean(data.productstock.variants?.length));
+      setVariants(data.productstock.variants?.length
+        ? data.productstock.variants.map((variant) => ({
+            id: variant.id,
+            name: variant.name,
+            price: String(variant.price),
+            sku: variant.sku ?? '',
+          }))
+        : [{ name: '', price: '', sku: '' }]
+      );
     }
   }, [
     open,
@@ -67,6 +103,7 @@ export function SheetEdit({
     data.sellprice,
     data.productstock.cat,
     data.productstock.price,
+    data.productstock.variants,
   ]);
 
   const handleCancel = () => {
@@ -91,7 +128,8 @@ export function SheetEdit({
       productName === data.productstock.name &&
       buyPriceNumber === data.productstock.price &&
       sellPriceNumber === data.sellprice &&
-      categoryProduct === data.productstock.cat
+      categoryProduct === data.productstock.cat &&
+      hasVariants === Boolean(data.productstock.variants?.length)
     ) {
       toast.info('No changes made.');
       setLoading(false);
@@ -105,6 +143,14 @@ export function SheetEdit({
         buyPrice: buyPriceNumber,
         sellPrice: sellPriceNumber,
         category: categoryProduct,
+        hasVariants,
+        variants: hasVariants
+          ? variants.map((variant) => ({
+              name: variant.name,
+              price: parseFloat(variant.price) || 0,
+              sku: variant.sku,
+            }))
+          : [],
       });
 
       // Send validated data using axios
@@ -126,6 +172,19 @@ export function SheetEdit({
     } finally {
       setLoading(false);
     }
+  };
+
+  const updateVariant = (index: number, field: keyof VariantForm, value: string) => {
+    setVariants((current) => current.map((variant, variantIndex) => (
+      variantIndex === index ? { ...variant, [field]: value } : variant
+    )));
+    setError((current) => ({ ...current, variants: '' }));
+  };
+
+  const addVariant = () => setVariants((current) => [...current, { name: '', price: '', sku: '' }]);
+
+  const removeVariant = (index: number) => {
+    setVariants((current) => current.length > 1 ? current.filter((_, variantIndex) => variantIndex !== index) : current);
   };
 
   return (
@@ -217,26 +276,60 @@ export function SheetEdit({
                 {error.category}
               </div>
             )}
+            <Label htmlFor="hasVariants" className="text-right">
+              Has Variants
+            </Label>
+            <label className="col-span-3 flex items-center justify-between rounded-xl border border-vernex-border px-3 py-2 text-sm">
+              <span>Add size/options like Large, Medium, Regular</span>
+              <input
+                id="hasVariants"
+                type="checkbox"
+                checked={hasVariants}
+                onChange={(event) => setHasVariants(event.target.checked)}
+                className="h-5 w-5 accent-emerald-600"
+              />
+            </label>
+            {hasVariants && (
+              <div className="col-span-4 rounded-xl border border-vernex-border p-3">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="font-semibold">Variants</p>
+                  <Button type="button" variant="outline" size="sm" onClick={addVariant}>
+                    <Plus className="mr-2 h-4 w-4" /> Add Variant
+                  </Button>
+                </div>
+                <div className="space-y-3">
+                  {variants.map((variant, index) => (
+                    <div key={variant.id ?? index} className="grid gap-2 rounded-lg bg-vernex-surface p-2 sm:grid-cols-[1fr_100px_1fr_auto]">
+                      <Input placeholder="Variant name" value={variant.name} onChange={(event) => updateVariant(index, 'name', event.target.value)} />
+                      <Input placeholder="Price" type="number" value={variant.price} onChange={(event) => updateVariant(index, 'price', event.target.value)} />
+                      <Input placeholder="SKU optional" value={variant.sku} onChange={(event) => updateVariant(index, 'sku', event.target.value)} />
+                      <Button type="button" variant="ghost" size="icon" onClick={() => removeVariant(index)} disabled={variants.length === 1}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                {error?.variants && <div className="mt-2 text-sm text-red-500">{error.variants}</div>}
+              </div>
+            )}
           </div>
         </div>
         <SheetFooter>
-          <SheetClose asChild>
-            <Button
-              onClick={handleEdit}
-              type="submit"
-              disabled={loading}
-              className="text-gray-100"
-            >
-              {loading ? (
-                <>
-                  <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
-                  Please wait
-                </>
-              ) : (
-                'Save change'
-              )}
-            </Button>
-          </SheetClose>
+          <Button
+            onClick={handleEdit}
+            type="submit"
+            disabled={loading}
+            className="text-gray-100"
+          >
+            {loading ? (
+              <>
+                <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
+                Please wait
+              </>
+            ) : (
+              'Save change'
+            )}
+          </Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

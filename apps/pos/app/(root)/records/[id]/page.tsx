@@ -21,7 +21,7 @@ export default function DetailPage({ params }: { params: Promise<{ id: string }>
   const receiptRef = useRef<HTMLDivElement>(null);
   const autoPrinted = useRef(false);
   const searchParams = useSearchParams();
-  const print = useReactToPrint({ content: () => receiptRef.current, documentTitle: sale?.billNumber ?? id });
+  const print = useReactToPrint({ contentRef: receiptRef, documentTitle: sale?.billNumber ?? id });
 
   const load = () => {
     Promise.all([axios.get(`/api/transactions/${id}`), axios.get('/api/shopdata')])

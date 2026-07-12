@@ -10,6 +10,12 @@ import { ArrowLeft, Eye, EyeOff, Loader2, LockKeyhole, Mail } from 'lucide-react
 
 type LoginMode = 'sign-in' | 'create-account' | 'forgot-password' | 'new-password';
 
+const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '');
+
+function authRedirectUrl() {
+  return `${configuredAppUrl || window.location.origin}/login`;
+}
+
 export function LoginForm() {
   const [mode, setMode] = useState<LoginMode>('sign-in');
   const [userId, setUserId] = useState('');
@@ -97,7 +103,7 @@ export function LoginForm() {
     setMessageType('error');
     try {
       const { error } = await client.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo: authRedirectUrl(),
       });
       if (error) {
         setMessage('Unable to send the reset email. Please try again.');
@@ -138,7 +144,7 @@ export function LoginForm() {
       const { data, error } = await client.auth.signUp({
         email: email.trim(),
         password,
-        options: { emailRedirectTo: `${window.location.origin}/login` },
+        options: { emailRedirectTo: authRedirectUrl() },
       });
       if (error) {
         setMessage(
@@ -230,7 +236,22 @@ export function LoginForm() {
             <Input id="login-user-id" placeholder="Enter your User ID or email" type="text" value={userId} onChange={(e) => setUserId(e.target.value)} autoComplete="username" disabled={loading} autoFocus />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="login-password">Password</Label>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="login-password">Password</Label>
+              <button
+                type="button"
+                className="text-sm font-medium text-vernex-navy hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vernex-gold dark:text-vernex-gold"
+                onClick={() => {
+                  setEmail(userId.includes('@') ? userId.trim() : '');
+                  setMode('forgot-password');
+                  setPassword('');
+                  setMessage('');
+                }}
+                disabled={loading}
+              >
+                Forgot password?
+              </button>
+            </div>
             <div className="relative">
               <Input id="login-password" className="pr-11" placeholder="Enter your password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" disabled={loading} />
               <button

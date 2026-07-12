@@ -28,6 +28,7 @@ type Customer = {
 };
 
 const emptyForm = { name: '', phone: '', email: '', address: '', taxId: '', country: 'India', notes: '' };
+const onlyDigits = (value: string) => value.replace(/\D/g, '');
 
 export function CustomerDirectory() {
   const { isBlocked, expiredMessage } = useSubscriptionStatus();
@@ -130,7 +131,15 @@ export function CustomerDirectory() {
         </CardHeader>
         <CardContent className="space-y-4 p-5">
           <Field label="Name" required><Input ref={nameRef} value={form.name} onChange={(event) => updateField('name', event.target.value)} autoComplete="name" /></Field>
-          <Field label="Phone" required><Input value={form.phone} onChange={(event) => updateField('phone', event.target.value)} autoComplete="tel" /></Field>
+          <Field label="Phone" required>
+            <Input
+              value={form.phone}
+              onChange={(event) => updateField('phone', onlyDigits(event.target.value))}
+              autoComplete="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+            />
+          </Field>
           <Field label="Address"><Input value={form.address} onChange={(event) => updateField('address', event.target.value)} autoComplete="street-address" /></Field>
           <Field label="Notes"><Input value={form.notes} onChange={(event) => updateField('notes', event.target.value)} /></Field>
           <div className="flex gap-2 pt-1">

@@ -42,6 +42,13 @@ export type Database = {
         price: number; stock: number; cat: string;
       }>;
       Product: Table<{ id: string; productId: string; sellprice: number }>;
+      ProductVariant: Table<{
+        id: string; productId: string; businessId: string; name: string; price: number;
+        sku: string | null; sortOrder: number; createdAt: string; updatedAt: string;
+      }, {
+        id?: string; productId: string; businessId: string; name: string; price: number;
+        sku?: string | null; sortOrder?: number; createdAt?: string; updatedAt?: string;
+      }>;
       Transaction: Table<{
         id: string; businessId: string; billNumber: string | null; customerName: string | null;
         customerPhone: string | null; customerEmail: string | null; customerAddress: string | null;

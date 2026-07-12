@@ -19,21 +19,32 @@ interface ChartOneState {
   options: ApexOptions;
 }
 
-// Get today's date
-const today = new Date();
-
-const oneWeekAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
-
-// Format dates as yyyy-mm-dd strings
-const startDateString = oneWeekAgo.toISOString().split('T')[0];
-const endDateString = today.toISOString().split('T')[0];
+// Compute the default 7-day range on the client only. Deriving this at module
+// load (server evaluation time) and using it as the initial value of a
+// controlled <input> caused a hydration mismatch, because the client
+// re-evaluates `new Date()` at a different instant than the server.
+const defaultDateRange = () => {
+  const today = new Date();
+  const oneWeekAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+  return {
+    start: oneWeekAgo.toISOString().split('T')[0],
+    end: today.toISOString().split('T')[0],
+  };
+};
 
 const ChartOne: React.FC = () => {
   // State for chart data
   const [dataChart, setDataChart] = useState<number[]>([]);
   // State for start and end dates
-  const [startDate, setStartDate] = useState<string>(startDateString);
-  const [endDate, setEndDate] = useState<string>(endDateString);
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
+  // Initialise the default date range after mount to avoid an SSR/client hydration mismatch.
+  useEffect(() => {
+    const { start, end } = defaultDateRange();
+    setStartDate(start);
+    setEndDate(end);
+  }, []);
 
   // State for chart options and series
   const [state, setState] = useState<ChartOneState>({
@@ -93,6 +104,7 @@ const ChartOne: React.FC = () => {
 
   // Update chart x-axis categories when startDate or endDate changes
   useEffect(() => {
+    if (!startDate || !endDate) return;
     const newCategories = generateDateRange(startDate, endDate);
 
     setState((prevState) => ({
@@ -109,6 +121,7 @@ const ChartOne: React.FC = () => {
 
   // Function to fetch data from the API
   const fetchData = useCallback(async () => {
+    if (!startDate || !endDate) return;
     try {
       const response = await axios.get(
         `/api/productsale?start=${startDate}&end=${endDate}`

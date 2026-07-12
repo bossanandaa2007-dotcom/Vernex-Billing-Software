@@ -21,6 +21,13 @@ type Product = {
     cat: string;
     stock: number;
     price: number;
+    variants?: Array<{
+      id: string;
+      name: string;
+      price: number;
+      sku?: string | null;
+      sortOrder?: number | null;
+    }>;
   };
 };
 
