@@ -5,11 +5,10 @@
   "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev:pos": "npm --prefix apps/pos run dev",
-    "dev:admin": "npm --prefix apps/admin run dev -- --port 3100",
-    "install:apps": "npm --prefix apps/pos install && npm --prefix apps/admin install",
-    "typecheck": "npm --prefix apps/pos run typecheck && npm --prefix apps/admin run typecheck",
-    "lint": "npm --prefix apps/pos run lint && npm --prefix apps/admin run lint",
-    "build": "npm --prefix apps/pos run build && npm --prefix apps/admin run build"
+    "install:apps": "npm --prefix apps/pos install",
+    "typecheck": "npm --prefix apps/pos run typecheck",
+    "lint": "npm --prefix apps/pos run lint",
+    "build": "npm --prefix apps/pos run build"
   },
   "devDependencies": {
     "turbo": "^2.5.4"

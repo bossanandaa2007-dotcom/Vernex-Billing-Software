@@ -9,10 +9,7 @@ export const metadata: Metadata = {
 export default function ReportsPage() {
   return (
     <div className="w-full">
-      <PageHeading
-        title="Reports"
-        description="Review sales, payments, products, customers, and returns."
-      />
+      <PageHeading title="Reports" />
       <ReportsDashboard />
     </div>
   );

@@ -28,10 +28,13 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [setupAvailable, setSetupAvailable] = useState(false);
 
-  const establishServerSession = async (accessToken: string) => {
+  const establishServerSession = async (accessToken: string, refreshToken?: string | null) => {
     const response = await fetch('/api/auth/session', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...(refreshToken ? { 'x-vernex-refresh': refreshToken } : {}),
+      },
     });
     if (!response.ok) throw new Error('Session exchange failed');
   };
@@ -74,12 +77,16 @@ export function LoginForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: userId.trim(), password }),
       });
+      const result = await response.json().catch(() => null);
       if (!response.ok) {
-        const result = await response.json().catch(() => null);
         setMessage(result?.error || 'Invalid User ID or password.');
         return;
       }
-      window.location.href = new URLSearchParams(window.location.search).get('next') || '/home';
+      // The server decides the destination by role: /super-admin for the Super
+      // Admin, or the right POS page for the signed-in user. A deep link (?next=)
+      // still wins so bounced users return to where they were headed.
+      const next = new URLSearchParams(window.location.search).get('next');
+      window.location.href = next || result?.redirect || '/home';
     } catch {
       setMessage('Unable to sign in. Please check your connection and try again.');
     } finally {
@@ -155,7 +162,7 @@ export function LoginForm() {
         return;
       }
       if (data.session) {
-        await establishServerSession(data.session.access_token);
+        await establishServerSession(data.session.access_token, data.session.refresh_token);
         window.location.href = '/home';
         return;
       }
@@ -194,7 +201,7 @@ export function LoginForm() {
       }
       const { data } = await client.auth.getSession();
       if (data.session) {
-        await establishServerSession(data.session.access_token);
+        await establishServerSession(data.session.access_token, data.session.refresh_token);
       }
       window.location.href = '/home';
     } catch {

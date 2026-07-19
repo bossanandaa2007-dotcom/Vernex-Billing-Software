@@ -14,7 +14,7 @@ export async function getShopForBusiness(businessId: string) {
 export async function getSalesReport(businessId: string, range: ReportRange) {
   const supabase = await createServerClient();
   const { data } = await supabase.from('Transaction')
-    .select('*, products:OnSaleProduct(*), customer:Customer(*)')
+    .select('id,billNumber,completedAt,createdAt,customerName,paymentMethod,paymentStatus,subtotal,discount,taxAmount,totalAmount,refundedAmount, products:OnSaleProduct(quantity)')
     .eq('businessId', businessId).eq('isComplete', true)
     .gte('completedAt', range.start.toISOString()).lte('completedAt', range.end.toISOString())
     .order('completedAt', { ascending: false });
@@ -63,13 +63,13 @@ export async function getPaymentReport(businessId: string, range: ReportRange) {
 export async function getProductReport(businessId: string, range: ReportRange) {
   const supabase = await createServerClient();
   const [sales, returns, stock] = await Promise.all([
-    supabase.from('OnSaleProduct').select('*, transaction:Transaction!inner(billNumber,completedAt,businessId,isComplete)')
+    supabase.from('OnSaleProduct').select('id,productId,productName,quantity,lineTotal, transaction:Transaction!inner(businessId,isComplete,completedAt)')
       .eq('transaction.businessId', businessId).eq('transaction.isComplete', true)
       .gte('transaction.completedAt', range.start.toISOString()).lte('transaction.completedAt', range.end.toISOString()),
-    supabase.from('ReturnItem').select('*, saleReturn:SaleReturn!inner(businessId,createdAt)')
+    supabase.from('ReturnItem').select('productName,quantity, saleReturn:SaleReturn!inner(businessId,createdAt)')
       .eq('saleReturn.businessId', businessId)
       .gte('saleReturn.createdAt', range.start.toISOString()).lte('saleReturn.createdAt', range.end.toISOString()),
-    supabase.from('ProductStock').select('*, Product(*)').eq('businessId', businessId).order('name'),
+    supabase.from('ProductStock').select('id,name,stock,price,cat').eq('businessId', businessId).order('name'),
   ]);
   const returned = new Map<string, number>();
   for (const item of returns.data ?? []) returned.set(item.productName, (returned.get(item.productName) ?? 0) + item.quantity);
@@ -97,8 +97,11 @@ export async function getProductReport(businessId: string, range: ReportRange) {
 export async function getCustomerReport(businessId: string, range: ReportRange) {
   const supabase = await createServerClient();
   const { data: customerRows } = await supabase.from('Customer')
-    .select('*, transactions:Transaction(*)')
-    .eq('businessId', businessId).eq('isActive', true);
+    .select('id,name,phone, transactions:Transaction(completedAt,totalAmount,refundedAmount,paymentStatus,amountReceived,isComplete)')
+    .eq('businessId', businessId).eq('isActive', true)
+    .eq('transactions.isComplete', true)
+    .gte('transactions.completedAt', range.start.toISOString())
+    .lte('transactions.completedAt', range.end.toISOString());
   const customers = (customerRows ?? []) as any[];
   return customers
     .map((customer) => {

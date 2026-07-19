@@ -8,7 +8,7 @@ import {
   requestContextSignatureHeader,
   stripRequestContextHeaders,
 } from '@/lib/request-context';
-import { requestUsesHttps, sessionCookieName } from '@/lib/session-cookie';
+import { clearSessionCookie, refreshCookieName, requestUsesHttps, sessionCookieName, setSessionCookies } from '@/lib/session-cookie';
 import type { CurrentUserContext } from '@/lib/auth';
 import type { ModuleKey } from '@/lib/modules';
 
@@ -26,6 +26,7 @@ const pageModules: Array<[string, ModuleKey]> = [
   ['/staff', 'staff_management'],
   ['/audit-logs', 'audit_logs'],
   ['/settings', 'business_settings'],
+  ['/support', 'support'],
 ];
 
 const apiModules: Array<[string, ModuleKey]> = [
@@ -44,6 +45,7 @@ const apiModules: Array<[string, ModuleKey]> = [
   ['/api/returns', 'returns_refunds'],
   ['/api/onsale', 'pos_billing'],
   ['/api/productsale', 'pos_billing'],
+  ['/api/support', 'support'],
 ];
 
 function matches(pathname: string, prefix: string) {
@@ -87,6 +89,43 @@ function configuration() {
     } catch {}
   }
   return url && anonKey ? { url, anonKey } : null;
+}
+
+// Short-lived guard cookie that prevents an endless refresh->redirect loop if a
+// freshly refreshed token somehow still fails to authenticate.
+const refreshGuardCookie = 'vernex-rt-guard';
+
+// Exchange the refresh token for a new Supabase session.
+async function refreshAccess(config: { url: string; anonKey: string }, refreshToken: string) {
+  try {
+    const response = await fetch(`${config.url}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: config.anonKey, Authorization: `Bearer ${config.anonKey}` },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      cache: 'no-store',
+    });
+    if (!response.ok) return null;
+    return (await response.json()) as { access_token?: string; refresh_token?: string };
+  } catch {
+    return null;
+  }
+}
+
+// When the access token is missing/expired, use the refresh-token cookie to mint
+// a fresh session, set the new cookies, and redirect back to the same URL so the
+// request re-runs with a valid token. Returns null if refresh is unavailable.
+async function attemptRefreshRedirect(request: NextRequest) {
+  if (request.cookies.get(refreshGuardCookie)?.value) return null;
+  const refreshToken = request.cookies.get(refreshCookieName)?.value;
+  const config = configuration();
+  if (!refreshToken || !config) return null;
+  const session = await refreshAccess(config, refreshToken);
+  if (!session?.access_token) return null;
+  const secure = requestUsesHttps(request);
+  const response = noStore(NextResponse.redirect(request.url));
+  setSessionCookies(response, { accessToken: session.access_token, refreshToken: session.refresh_token }, secure);
+  response.cookies.set(refreshGuardCookie, '1', { httpOnly: true, sameSite: 'lax', secure, path: '/', maxAge: 20 });
+  return response;
 }
 
 function unavailable(request: NextRequest) {
@@ -167,7 +206,45 @@ async function nextWithContext(request: NextRequest, token: string, ctx: Current
   return response;
 }
 
+// The merged Super Admin section shares the POS session cookie but is gated on
+// the platform Super Admin identity (email match), not on a StaffProfile. Any
+// other user — even a valid business login — is blocked here.
+async function handleSuperAdmin(request: NextRequest) {
+  const isApi = request.nextUrl.pathname.startsWith('/api/');
+  const deny = () => {
+    if (isApi) return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    url.searchParams.set('next', request.nextUrl.pathname);
+    return noStore(NextResponse.redirect(url));
+  };
+  const token = request.cookies.get(sessionCookieName)?.value;
+  const allowed = process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase();
+  const config = configuration();
+  if (!allowed || !config) return deny();
+  // Missing token: try to renew from the refresh cookie before denying.
+  if (!token) return (await attemptRefreshRedirect(request)) ?? deny();
+  try {
+    const verification = await fetch(`${config.url}/auth/v1/user`, {
+      headers: { apikey: config.anonKey, Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    if (verification.ok) {
+      const user = (await verification.json()) as { email?: string };
+      // Wrong account (not the super admin): a refresh cannot help — deny outright.
+      return user.email?.toLowerCase() === allowed ? noStore(NextResponse.next()) : deny();
+    }
+  } catch {}
+  // Token expired/invalid: attempt a silent refresh, otherwise deny.
+  return (await attemptRefreshRedirect(request)) ?? deny();
+}
+
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  if (pathname === '/super-admin' || pathname.startsWith('/super-admin/') || pathname.startsWith('/api/super-admin')) {
+    return handleSuperAdmin(request);
+  }
+
   if (shouldBypassMiddleware(request)) {
     const headers = new Headers(request.headers);
     stripRequestContextHeaders(headers);
@@ -192,6 +269,8 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get(sessionCookieName)?.value;
   if (profile) profile.tokenReadEnd = Date.now();
   if (!token) {
+    const refreshed = await attemptRefreshRedirect(request);
+    if (refreshed) return refreshed;
     if (request.nextUrl.pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthenticated.' }, { status: 401 });
     }
@@ -275,13 +354,17 @@ export async function middleware(request: NextRequest) {
     if (error instanceof Error && error.message !== 'invalid-session') {
       return NextResponse.json({ error: 'Unable to verify business feature access.' }, { status: 503 });
     }
+    // The access token expired: try to silently renew it from the refresh cookie
+    // before forcing a fresh login. This is what keeps the user signed in.
+    const refreshed = await attemptRefreshRedirect(request);
+    if (refreshed) return refreshed;
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('message', 'session-expired');
     const response = request.nextUrl.pathname.startsWith('/api/')
       ? NextResponse.json({ error: 'Unauthenticated.' }, { status: 401 })
       : NextResponse.redirect(url);
-    response.cookies.delete(sessionCookieName);
+    clearSessionCookie(response, requestUsesHttps(request));
     return response;
   }
 }
@@ -290,6 +373,7 @@ export const config = {
   matcher: [
     '/home/:path*', '/orders/:path*', '/product/:path*', '/customers/:path*',
     '/customer/:path*', '/records/:path*', '/inventory/:path*', '/analytics/:path*',
-    '/staff/:path*', '/audit-logs/:path*', '/settings/:path*', '/api/:path*',
+    '/staff/:path*', '/audit-logs/:path*', '/settings/:path*', '/support/:path*',
+    '/super-admin/:path*', '/api/:path*',
   ],
 };
