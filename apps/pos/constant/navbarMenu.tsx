@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   ScrollText,
   Users,
+  LifeBuoy,
 } from 'lucide-react';
 import { NavItem } from '@/types/Navbar';
 
@@ -82,5 +83,12 @@ export const NAVBAR_ITEMS: NavItem[] = [
     icon: <Settings className="h-4 w-4" />,
     roles: ['OWNER'],
     moduleKey: 'business_settings',
+  },
+  {
+    title: 'Support',
+    path: '/support',
+    icon: <LifeBuoy className="h-4 w-4" />,
+    roles: ['OWNER', 'MANAGER', 'CASHIER'],
+    moduleKey: 'support',
   },
 ];

@@ -27,6 +27,13 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   const [storeName, setStoreName] = useState('Vernex');
   const [storeLogo, setStoreLogo] = useState('/assets/vernex-logo.png');
   const [collapsed, setCollapsed] = useState(false);
+  // Interactive Radix chrome (mobile nav Sheet, theme toggle) generates ids with
+  // useId. Client-only providers above this tree (theme provider, top loader)
+  // shift that tree, so SSR and the first client render disagree on those ids and
+  // React logs a hydration mismatch. Rendering these widgets only after mount
+  // keeps the server and first client render identical.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const pathname = usePathname();
   const showHeaderSearch = pathname !== '/home';
   const { role, enabledModules, loading } = useBusinessAccess();
@@ -108,19 +115,30 @@ const RootLayout = ({ children }: RootLayoutProps) => {
         >
           <TrialBanner />
           <header className="flex h-16 items-center gap-2 border-b border-white/10 bg-vernex-dark px-3 shadow-sm sm:gap-3 sm:px-4 lg:h-[72px] lg:border-vernex-border lg:bg-white lg:px-6 dark:border-[#1E335F] dark:bg-vernex-dark">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-11 w-11 shrink-0 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white lg:hidden"
-                >
-                  <Menu className="h-5 w-5" />
-                  <span className="sr-only">Toggle navigation menu</span>
-                </Button>
-              </SheetTrigger>
-              <NavbarSheet storeName={storeName} storeLogo={storeLogo} />
-            </Sheet>
+            {mounted ? (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-11 w-11 shrink-0 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white lg:hidden"
+                  >
+                    <Menu className="h-5 w-5" />
+                    <span className="sr-only">Toggle navigation menu</span>
+                  </Button>
+                </SheetTrigger>
+                <NavbarSheet storeName={storeName} storeLogo={storeLogo} />
+              </Sheet>
+            ) : (
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-11 w-11 shrink-0 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white lg:hidden"
+                aria-label="Toggle navigation menu"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
             <div className="flex min-w-0 flex-1 items-center justify-center gap-2 lg:hidden">
               <span className="grid h-9 w-10 shrink-0 place-items-center overflow-hidden rounded-md bg-white p-1">
                 <Image src="/assets/vernex-logo.png" alt="Vernex logo" width={40} height={30} className="h-full w-full object-contain" unoptimized />
@@ -145,7 +163,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
               <Store className="h-4 w-4 text-vernex-gold" />
               <span className="max-w-40 truncate">{storeName}</span>
             </div>
-            <div className="hidden sm:block"><ModeToggle /></div>
+            <div className="hidden sm:block">{mounted && <ModeToggle />}</div>
             {enabledModules.includes('business_settings') && <Button variant="outline" size="icon" asChild className="h-11 w-11 shrink-0 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white lg:border-vernex-border lg:bg-white lg:text-vernex-navy lg:hover:bg-vernex-surface dark:border-[#1E335F] dark:bg-vernex-navy dark:text-white">
               <Link href="/settings">
                 <Settings className="h-4 w-4" />

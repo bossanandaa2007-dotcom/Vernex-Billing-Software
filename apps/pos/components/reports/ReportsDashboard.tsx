@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,8 @@ import {
   Banknote,
   BarChart3,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Package,
   RefreshCw,
   RotateCcw,
@@ -25,17 +27,22 @@ import { useBusinessAccess } from '@/hooks/use-business-access';
 
 const reportTypes = ['sales', 'payments', 'products', 'customers', 'returns'] as const;
 const presets = [
-  ['today', 'Today'],
-  ['yesterday', 'Yesterday'],
   ['last7', 'Last 7 Days'],
   ['month', 'This Month'],
   ['custom', 'Custom'],
 ] as const;
 
+const toDateValue = (date: Date) => {
+  const offset = date.getTimezoneOffset();
+  return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 10);
+};
+
 export function ReportsDashboard() {
-  const [preset, setPreset] = useState('today');
+  const [preset, setPreset] = useState('day');
+  const [selectedDate, setSelectedDate] = useState(() => toDateValue(new Date()));
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const [reports, setReports] = useState<any>({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -50,13 +57,31 @@ export function ReportsDashboard() {
   ), [enabledModules]);
 
   const query = useMemo(() => {
+    if (preset === 'day') {
+      return new URLSearchParams({ preset: 'custom', from: selectedDate, to: selectedDate }).toString();
+    }
     const params = new URLSearchParams({ preset });
     if (preset === 'custom') {
       if (from) params.set('from', from);
       if (to) params.set('to', to);
     }
     return params.toString();
-  }, [preset, from, to]);
+  }, [preset, selectedDate, from, to]);
+
+  const formattedDate = useMemo(
+    () => new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+    [selectedDate],
+  );
+  const selectedLabel = preset === 'day' ? formattedDate : (presets.find(([value]) => value === preset)?.[1] ?? formattedDate);
+
+  const shiftDate = (days: number) => {
+    const next = new Date(`${selectedDate}T00:00:00`);
+    next.setDate(next.getDate() + days);
+    setSelectedDate(toDateValue(next));
+    setPreset('day');
+  };
+
+  const isToday = selectedDate === toDateValue(new Date());
 
   useEffect(() => {
     if (!enabledModules.length) {
@@ -83,7 +108,6 @@ export function ReportsDashboard() {
   const currency = reports.sales?.currency ?? 'INR';
   const paymentMethods = reports.payments?.country === 'India' ? ['CASH', 'UPI', 'CARD', 'CREDIT'] : ['CASH', 'CARD', 'ONLINE', 'CREDIT'];
   const exportHref = (type: string) => `/api/reports/export?type=${type}&${query}`;
-  const selectedLabel = presets.find(([value]) => value === preset)?.[1] ?? 'Today';
 
   if (error) {
     return (
@@ -103,17 +127,48 @@ export function ReportsDashboard() {
     <div className="w-full space-y-5">
       <Card className="overflow-hidden border-vernex-border/80 shadow-sm">
         <CardHeader className="border-b border-vernex-border bg-white/90 pb-4 dark:border-[#1E335F] dark:bg-vernex-navy">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <BarChart3 className="h-5 w-5 text-emerald-600" />
-                Report Center
-              </CardTitle>
-              <p className="mt-1 text-xs text-vernex-muted dark:text-slate-400">
-                Viewing {selectedLabel.toLowerCase()} performance across sales, payments, products, and operations.
-              </p>
-            </div>
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-end">
             <div className="flex flex-wrap items-center gap-2">
+              <div className={`flex items-center gap-2 rounded-2xl border p-1.5 shadow-sm transition ${
+                preset === 'day'
+                  ? 'border-vernex-navy bg-white dark:border-vernex-gold dark:bg-vernex-dark'
+                  : 'border-vernex-border bg-white dark:border-[#1E335F] dark:bg-vernex-dark'
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => shiftDate(-1)}
+                  aria-label="Previous day"
+                  className="grid h-9 w-9 place-items-center rounded-xl border border-vernex-border text-vernex-navy transition hover:border-vernex-gold hover:bg-vernex-gold/10 dark:border-[#1E335F] dark:text-white"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setPreset('day'); dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.focus(); }}
+                  className="relative flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-vernex-navy transition hover:bg-vernex-gold/10 dark:text-white"
+                >
+                  <CalendarDays className="h-4 w-4 text-vernex-navy dark:text-vernex-gold" />
+                  {formattedDate}
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    value={selectedDate}
+                    max={toDateValue(new Date())}
+                    onChange={(e) => { if (e.target.value) { setSelectedDate(e.target.value); setPreset('day'); } }}
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                    aria-label="Select date"
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => shiftDate(1)}
+                  disabled={isToday}
+                  aria-label="Next day"
+                  className="grid h-9 w-9 place-items-center rounded-xl border border-vernex-border text-vernex-navy transition hover:border-vernex-gold hover:bg-vernex-gold/10 disabled:cursor-not-allowed disabled:opacity-40 dark:border-[#1E335F] dark:text-white"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
               {presets.map(([value, label]) => (
                 <button
                   key={value}

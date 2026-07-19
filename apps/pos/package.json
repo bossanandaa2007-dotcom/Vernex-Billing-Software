@@ -49,6 +49,7 @@
     "react-resizable-panels": "^2.0.19",
     "react-to-print": "^3.3.0",
     "react-toastify": "^10.0.5",
+    "recharts": "^2.15.4",
     "tailwind-merge": "^2.3.0",
     "tailwindcss-animate": "^1.0.7",
     "use-debounce": "^10.0.0",

@@ -20,9 +20,9 @@ export async function GET(request: Request) {
 
   const supabase = await createServerClient(request);
   const [salesResult, returnsResult] = await Promise.all([
-    supabase.from('Transaction').select('*, products:OnSaleProduct(*)').eq('businessId', ctx.businessId)
+    supabase.from('Transaction').select('completedAt,createdAt,subtotal,discount,taxAmount,totalAmount, products:OnSaleProduct(costPrice,quantity)').eq('businessId', ctx.businessId)
       .eq('isComplete', true).gte('completedAt', startDate.toISOString()).lte('completedAt', endDate.toISOString()),
-    supabase.from('SaleReturn').select('*').eq('businessId', ctx.businessId)
+    supabase.from('SaleReturn').select('createdAt,refundAmount').eq('businessId', ctx.businessId)
       .gte('createdAt', startDate.toISOString()).lte('createdAt', endDate.toISOString()),
   ]);
   const transactions = (salesResult.data ?? []) as any[];

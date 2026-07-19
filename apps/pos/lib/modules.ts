@@ -6,12 +6,12 @@ export const MODULE_KEYS = [
   'business', 'business_settings', 'printer_settings', 'receipt_customization',
   'advanced', 'audit_logs', 'analytics', 'multi_counter', 'multiple_branches',
   'barcode_support', 'kitchen_display', 'customer_loyalty', 'credit_sales',
-  'returns_refunds', 'offline_mode',
+  'returns_refunds', 'offline_mode', 'support',
 ] as const;
 
 export type ModuleKey = (typeof MODULE_KEYS)[number];
 export const DEFAULT_MODULE_KEYS: ModuleKey[] = [
-  'dashboard', 'pos_billing', 'products', 'customers', 'sales_records', 'business_settings',
+  'dashboard', 'pos_billing', 'products', 'customers', 'sales_records', 'business_settings', 'support',
 ];
 
 export const MODULE_ROUTE_PREFIXES: Record<ModuleKey, string[]> = {
@@ -50,6 +50,7 @@ export const MODULE_ROUTE_PREFIXES: Record<ModuleKey, string[]> = {
   credit_sales: [],
   returns_refunds: [],
   offline_mode: [],
+  support: ['/support'],
 };
 
 export const MODULE_PERMISSION_MAP = {

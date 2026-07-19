@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: 'Customers' };
 export default function CustomersPage() {
   return (
     <div className="w-full">
-      <PageHeading title="Customers" description="Manage customer details and review purchase history." />
+      <PageHeading title="Customers" />
       <CustomerDirectory />
     </div>
   );

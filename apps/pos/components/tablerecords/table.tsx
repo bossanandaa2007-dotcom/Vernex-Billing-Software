@@ -29,13 +29,11 @@ export async function Records(props: PageProps) {
   const periodParam = typeof searchParams.period === 'string' ? searchParams.period : 'all';
   const period = periodOptions.some((item) => item.value === periodParam) ? periodParam as RecordsPeriod : 'all';
   const { data, metadata, currency } = await fetchRecords({ take, skip, query: search, period });
-  const visibleRevenue = data.reduce((sum, item) => sum + item.totalAmount, 0);
-  const visibleItems = data.reduce((sum, item) => sum + item.itemCount, 0);
   const cardStats = [
-    { label: 'Visible revenue', shortLabel: 'Revenue', value: formatMoney(visibleRevenue, currency), icon: CircleDollarSign },
+    { label: 'Total revenue', shortLabel: 'Revenue', value: formatMoney(metadata.totalRevenue, currency), icon: CircleDollarSign },
     { label: 'Transactions', shortLabel: 'Bills', value: metadata.totalTransactions.toString(), icon: ReceiptText },
-    { label: 'Average bill', shortLabel: 'Avg', value: formatMoney(data.length ? visibleRevenue / data.length : 0, currency), icon: CreditCard },
-    { label: 'Items sold', shortLabel: 'Items', value: visibleItems.toString(), icon: CalendarDays },
+    { label: 'Average bill', shortLabel: 'Avg', value: formatMoney(metadata.totalTransactions ? metadata.totalRevenue / metadata.totalTransactions : 0, currency), icon: CreditCard },
+    { label: 'Items sold', shortLabel: 'Items', value: metadata.totalItems.toString(), icon: CalendarDays },
   ];
   const filterHref = (value: RecordsPeriod) => {
     const params = new URLSearchParams();

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSupabase } from '@/lib/supabase.server';
-import { requestUsesHttps, setSessionCookie } from '@/lib/session-cookie';
+import { requestUsesHttps, setSessionCookies } from '@/lib/session-cookie';
 import { authErrorResponse, getCurrentUserContext } from '@/lib/auth';
 
 export async function POST(request: Request) {
@@ -23,8 +23,9 @@ export async function POST(request: Request) {
     if (response) return response;
     return NextResponse.json({ error: 'Unable to verify your account. Please try again.' }, { status: 500 });
   }
+  const refreshToken = request.headers.get('x-vernex-refresh') || null;
   const response = NextResponse.json({ success: true });
-  setSessionCookie(response, token, 60 * 60, requestUsesHttps(request));
+  setSessionCookies(response, { accessToken: token, refreshToken }, requestUsesHttps(request));
   response.headers.set('Cache-Control', 'no-store');
   return response;
 }
