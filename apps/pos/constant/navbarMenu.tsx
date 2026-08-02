@@ -10,6 +10,7 @@ import {
   ScrollText,
   Users,
   LifeBuoy,
+  CreditCard,
 } from 'lucide-react';
 import { NavItem } from '@/types/Navbar';
 
@@ -83,6 +84,13 @@ export const NAVBAR_ITEMS: NavItem[] = [
     icon: <Settings className="h-4 w-4" />,
     roles: ['OWNER'],
     moduleKey: 'business_settings',
+  },
+  {
+    title: 'Subscription',
+    path: '/subscription',
+    icon: <CreditCard className="h-4 w-4" />,
+    // No module and no role limit: this is the one page that must stay reachable
+    // for everyone, including when an expired licence has locked the rest of the app.
   },
   {
     title: 'Support',

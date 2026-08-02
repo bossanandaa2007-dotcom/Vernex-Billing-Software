@@ -3,5 +3,6 @@ export type NavItem = {
   path: string;
   icon?: JSX.Element;
   roles?: Array<'OWNER' | 'MANAGER' | 'CASHIER' | 'WORKER' | 'UNKNOW'>;
-  moduleKey: import('@/lib/modules').ModuleKey;
+  /** Omit for pages that are not behind a feature module (always available). */
+  moduleKey?: import('@/lib/modules').ModuleKey;
 };

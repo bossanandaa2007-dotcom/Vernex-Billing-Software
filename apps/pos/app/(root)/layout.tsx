@@ -17,6 +17,8 @@ import { NAVBAR_ITEMS } from '@/constant/navbarMenu';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { TrialBanner } from '@/components/subscription/TrialBanner';
+import { SubscriptionGate } from '@/components/subscription/SubscriptionGate';
+import { RenewalReminder } from '@/components/subscription/RenewalReminder';
 import { useBusinessAccess } from '@/hooks/use-business-access';
 import { LogoutButton } from '@/components/auth/LogoutButton';
 import { MobileBottomNav } from '@/components/dashboard/MobileBottomNav';
@@ -35,7 +37,8 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const pathname = usePathname();
-  const showHeaderSearch = pathname !== '/home';
+  // Pages with nothing to search against don't show the header search box.
+  const showHeaderSearch = !['/home', '/subscription'].includes(pathname);
   const { role, enabledModules, loading } = useBusinessAccess();
   useEffect(() => {
     const fetchShopData = async (fresh = false) => {
@@ -82,7 +85,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
           }`}
         >
           <div className="flex h-screen flex-col gap-2 overflow-hidden">
-            <div className="flex h-16 items-center justify-between gap-2 border-b border-white/10 px-4 lg:h-[72px] lg:px-5">
+            <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-white/10 px-4 lg:h-[72px] lg:px-5">
               {!collapsed && <VernexBrand />}
               {collapsed && <div className="grid h-10 w-10 place-items-center rounded-xl bg-vernex-gold font-black text-vernex-dark">V</div>}
               <Button variant="ghost" size="icon" className="text-slate-300 hover:text-white" onClick={() => setCollapsed((value) => !value)}>
@@ -91,18 +94,20 @@ const RootLayout = ({ children }: RootLayoutProps) => {
               </Button>
             </div>
             <Navbar collapsed={collapsed} />
-            <div className="mt-auto border-t border-white/10 p-4 text-xs text-slate-400">
+            {/* shrink-0 keeps the workspace footer pinned and fully visible no
+                matter how long the navigation list grows. */}
+            <div className="shrink-0 border-t border-white/10 px-4 py-3 text-xs text-slate-400">
               {!collapsed ? (
                 <>
                   <p className="font-medium text-white">Business workspace</p>
-                  <p className="mt-1 truncate">{storeName}</p>
+                  <p className="mt-0.5 truncate">{storeName}</p>
                 </>
               ) : (
                 <div className="grid h-9 w-9 place-items-center rounded-lg bg-white/10 text-vernex-gold">
                   <Store className="h-4 w-4" />
                 </div>
               )}
-              <div className="mt-3">
+              <div className="mt-2">
                 <LogoutButton collapsed={collapsed} />
               </div>
             </div>
@@ -114,6 +119,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
           }`}
         >
           <TrialBanner />
+          <RenewalReminder />
           <header className="flex h-16 items-center gap-2 border-b border-white/10 bg-vernex-dark px-3 shadow-sm sm:gap-3 sm:px-4 lg:h-[72px] lg:border-vernex-border lg:bg-white lg:px-6 dark:border-[#1E335F] dark:bg-vernex-dark">
             {mounted ? (
               <Sheet>
@@ -185,7 +191,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
                   <h1 className="text-lg font-semibold">Access denied</h1>
                   <p className="mt-1 text-sm">{routeModule && !enabledModules.includes(routeModule) ? 'This feature is not enabled for your business.' : 'Your current role does not have permission to open this page.'}</p>
                 </div>
-              ) : children}
+              ) : <SubscriptionGate>{children}</SubscriptionGate>}
             </div>
           </main>
           <MobileBottomNav />

@@ -76,7 +76,88 @@ function requiresAuthenticatedContext(pathname: string) {
     '/api/shopdata',
     '/api/subscription',
     '/api/storage',
+    '/subscription',
   ].some((prefix) => matches(pathname, prefix));
+}
+
+// Once the trial or the paid plan lapses, the software is locked: the business
+// may only reach the pages needed to pay (and to contact Vernex about it). Every
+// other page and API is refused until a payment is confirmed.
+const unlockedWhenExpired = [
+  '/subscription',
+  '/api/subscription',
+  '/api/app-context',
+  '/api/auth',
+  '/api/support',
+  '/support',
+];
+
+function allowedWhileExpired(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  // The app shell reads shop branding on every page, including the lock screen.
+  if (matches(pathname, '/api/shopdata') && request.method === 'GET') return true;
+  return unlockedWhenExpired.some((prefix) => matches(pathname, prefix));
+}
+
+function locked(request: NextRequest, message: string) {
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    // 402 Payment Required — the client turns this into the renew prompt.
+    return NextResponse.json({ error: message }, { status: 402 });
+  }
+  const url = request.nextUrl.clone();
+  url.pathname = '/subscription';
+  url.search = '';
+  return noStore(NextResponse.redirect(url));
+}
+
+type SubscriptionSnapshot = { active: boolean; message: string };
+
+// Separate from the access cache and deliberately short-lived, so a licence
+// activated by the Super Admin unlocks the business within seconds.
+const subscriptionCache = new Map<string, { data: SubscriptionSnapshot; expires: number }>();
+const SUBSCRIPTION_CACHE_MS = 20_000;
+
+async function subscriptionSnapshot(
+  config: { url: string; anonKey: string },
+  token: string,
+  businessId: string
+): Promise<SubscriptionSnapshot> {
+  const cached = subscriptionCache.get(businessId);
+  if (cached && cached.expires > Date.now()) return cached.data;
+  const response = await fetch(
+    `${config.url}/rest/v1/Business?select=subscriptionStatus,trialEndsAt,planExpiresAt&id=eq.${encodeURIComponent(businessId)}&limit=1`,
+    { headers: { apikey: config.anonKey, Authorization: `Bearer ${token}` }, cache: 'no-store' }
+  );
+  // Never lock a business out because of an infrastructure hiccup; the route
+  // handlers still run requireActiveSubscription as the authoritative check.
+  if (!response.ok) return { active: true, message: '' };
+  const rows = (await response.json()) as Array<{ subscriptionStatus?: string; trialEndsAt?: string | null; planExpiresAt?: string | null }>;
+  const business = rows[0];
+  if (!business) return { active: true, message: '' };
+  const now = Date.now();
+  const trialEndsAt = business.trialEndsAt ? new Date(business.trialEndsAt).getTime() : null;
+  const planExpiresAt = business.planExpiresAt ? new Date(business.planExpiresAt).getTime() : null;
+  // A NULL planExpiresAt on an ACTIVE business is a perpetual licence.
+  const paidCurrent = business.subscriptionStatus === 'ACTIVE' && (planExpiresAt === null || planExpiresAt >= now);
+  const trialCurrent = business.subscriptionStatus === 'TRIAL' && trialEndsAt !== null && trialEndsAt >= now;
+  const data: SubscriptionSnapshot = {
+    active: paidCurrent || trialCurrent,
+    message:
+      business.subscriptionStatus === 'ACTIVE'
+        ? 'Your subscription has ended. Renew your plan to continue using Vernex.'
+        : business.subscriptionStatus === 'SUSPENDED'
+          ? 'Your account is suspended. Contact Vernex to restore access.'
+          : 'Your trial has expired. Choose a monthly or yearly plan to continue using Vernex.',
+  };
+  subscriptionCache.set(businessId, { data, expires: Date.now() + SUBSCRIPTION_CACHE_MS });
+  return data;
+}
+
+// Returns a lock response when this request must be refused, otherwise null.
+async function subscriptionBlock(request: NextRequest, config: { url: string; anonKey: string } | null, token: string, businessId: string) {
+  if (allowedWhileExpired(request) || !config) return null;
+  const snapshot = await subscriptionSnapshot(config, token, businessId).catch(() => ({ active: true, message: '' }));
+  return snapshot.active ? null : locked(request, snapshot.message);
 }
 
 function configuration() {
@@ -288,9 +369,10 @@ export async function middleware(request: NextRequest) {
     if (profile) profile.middlewareModuleCheckStart = Date.now();
     const allowed = moduleKeys.every((key) => cached.enabled.has(key));
     if (profile) profile.middlewareModuleCheckEnd = Date.now();
-    return moduleKeys.every((key) => cached.enabled.has(key))
-      ? nextWithContext(request, token, cached.ctx, { ...profile, middlewareEnd: Date.now() })
-      : unavailable(request);
+    if (!allowed) return unavailable(request);
+    const blocked = await subscriptionBlock(request, configuration(), token, cached.ctx.businessId);
+    if (blocked) return blocked;
+    return nextWithContext(request, token, cached.ctx, { ...profile, middlewareEnd: Date.now() });
   }
 
   if (profile) profile.configStart = Date.now();
@@ -349,7 +431,10 @@ export async function middleware(request: NextRequest) {
     const allowed = moduleKeys.every((key) => enabled.has(key));
     if (profile) profile.middlewareModuleCheckEnd = Date.now();
     setCachedAccess(token, { ctx, enabled, expires: Date.now() + ACCESS_CACHE_MS });
-    return allowed ? nextWithContext(request, token, ctx, { ...profile, middlewareEnd: Date.now() }) : unavailable(request);
+    if (!allowed) return unavailable(request);
+    const blocked = await subscriptionBlock(request, config, token, ctx.businessId);
+    if (blocked) return blocked;
+    return nextWithContext(request, token, ctx, { ...profile, middlewareEnd: Date.now() });
   } catch (error) {
     if (error instanceof Error && error.message !== 'invalid-session') {
       return NextResponse.json({ error: 'Unable to verify business feature access.' }, { status: 503 });
@@ -374,6 +459,7 @@ export const config = {
     '/home/:path*', '/orders/:path*', '/product/:path*', '/customers/:path*',
     '/customer/:path*', '/records/:path*', '/inventory/:path*', '/analytics/:path*',
     '/staff/:path*', '/audit-logs/:path*', '/settings/:path*', '/support/:path*',
+    '/subscription/:path*', '/subscription',
     '/super-admin/:path*', '/api/:path*',
   ],
 };

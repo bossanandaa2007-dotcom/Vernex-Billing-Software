@@ -15,7 +15,7 @@ export function MobileBottomNav() {
   const items = NAVBAR_ITEMS.filter(
     (item) =>
       mobilePaths.includes(item.path) &&
-      enabledModules.includes(item.moduleKey) &&
+      (!item.moduleKey || enabledModules.includes(item.moduleKey)) &&
       (!item.roles || (role && item.roles.includes(role as never)))
   );
 
