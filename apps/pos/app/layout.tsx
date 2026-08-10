@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ToastContainer } from 'react-toastify';
 import NextTopLoader from 'nextjs-toploader';
+import { ModalLockCleanup } from '@/components/modal-lock-cleanup';
 import './globals.css';
 import 'react-toastify/dist/ReactToastify.css';
 // Run all server functions in Singapore (sin1), colocated with the Supabase
@@ -42,6 +43,7 @@ export default async function RootLayout({
             disableTransitionOnChange
           >
             <NextTopLoader showSpinner={false} />
+            <ModalLockCleanup />
             {children}
             <ToastContainer />
           </ThemeProvider>

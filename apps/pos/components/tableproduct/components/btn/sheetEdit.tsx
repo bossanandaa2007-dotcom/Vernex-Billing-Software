@@ -111,6 +111,24 @@ export function SheetEdit({
     setError({});
   };
 
+  const normalizedInitialVariants = (data.productstock.variants ?? [])
+    .map((variant) => ({
+      name: variant.name.trim(),
+      price: Number(variant.price) || 0,
+      sku: (variant.sku ?? '').trim(),
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name) || left.price - right.price || left.sku.localeCompare(right.sku));
+
+  const normalizedCurrentVariants = hasVariants
+    ? variants
+        .map((variant) => ({
+          name: variant.name.trim(),
+          price: parseFloat(variant.price) || 0,
+          sku: variant.sku.trim(),
+        }))
+        .sort((left, right) => left.name.localeCompare(right.name) || left.price - right.price || left.sku.localeCompare(right.sku))
+    : [];
+
   const handleEdit = async () => {
     setLoading(true);
 
@@ -124,16 +142,16 @@ export function SheetEdit({
     }
 
     // Check if any changes were made
-    if (
-      productName === data.productstock.name &&
-      buyPriceNumber === data.productstock.price &&
-      sellPriceNumber === data.sellprice &&
-      categoryProduct === data.productstock.cat &&
-      hasVariants === Boolean(data.productstock.variants?.length)
-    ) {
+    const hasChanges =
+      productName.trim() !== data.productstock.name.trim() ||
+      buyPriceNumber !== Number(data.productstock.price) ||
+      sellPriceNumber !== Number(data.sellprice) ||
+      categoryProduct.trim() !== (data.productstock.cat ?? '').trim() ||
+      JSON.stringify(normalizedCurrentVariants) !== JSON.stringify(normalizedInitialVariants);
+
+    if (!hasChanges) {
       toast.info('No changes made.');
       setLoading(false);
-      onClose();
       return;
     }
 
@@ -155,6 +173,7 @@ export function SheetEdit({
 
       // Send validated data using axios
       await axios.patch(`/api/product/${data.productstock.id}`, validatedData);
+      toast.success('Product updated successfully.');
       onClose();
       router.refresh();
     } catch (error) {
@@ -168,6 +187,8 @@ export function SheetEdit({
           ...prevError,
           ...fieldErrors,
         }));
+      } else {
+        toast.error('Unable to update product. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -188,7 +209,9 @@ export function SheetEdit({
   };
 
   return (
-    <Sheet open={open}>
+    <Sheet open={open} onOpenChange={(nextOpen) => {
+      if (!nextOpen) handleCancel();
+    }}>
       <SheetContent
         showCloseButton={false}
         className="flex w-full max-w-full flex-col gap-0 overflow-y-auto sm:max-w-md"

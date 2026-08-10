@@ -125,7 +125,9 @@ export function SheetAdd({
   };
 
   return (
-    <Sheet open={open}>
+    <Sheet open={open} onOpenChange={(nextOpen) => {
+      if (!nextOpen) handleCancel();
+    }}>
       <SheetContent
         showCloseButton={false}
         className="flex w-full max-w-full flex-col gap-0 overflow-y-auto sm:max-w-md"

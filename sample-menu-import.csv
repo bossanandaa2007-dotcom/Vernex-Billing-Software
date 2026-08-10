@@ -1,0 +1,7 @@
+okProduct Name,Category,Subcategory,Description,Price,Discount,Tax,GST,HSN,SKU,Barcode,Variant,Size,Unit,Veg,Preparation Time,Availability,Tags
+Margherita Pizza,Pizza,Classic,Cheese pizza with tomato sauce,249,0,5,5%,190590,SKU-PIZ-MARG,890000000001,Regular,9 inch,piece,Veg,15 minutes,Available,"pizza,cheese,veg"
+Margherita Pizza,Pizza,Classic,Cheese pizza with tomato sauce,349,0,5,5%,190590,SKU-PIZ-MARG-L,890000000002,Large,12 inch,piece,Veg,18 minutes,Available,"pizza,cheese,veg"
+Chicken Biryani,Biryani,Non Veg,Hyderabadi chicken biryani with raita,299,0,5,5%,210690,SKU-BIR-CHK,890000000003,Regular,,plate,Non Veg,25 minutes,Available,"biryani,chicken"
+Paneer Butter Masala,Main Course,North Indian,Cottage cheese curry in rich tomato gravy,279,10,5,5%,210690,SKU-MC-PBM,890000000004,,,plate,Veg,20 minutes,Available,"paneer,curry,veg"
+Masala Dosa,South Indian,Dosa,Crispy dosa served with chutney and sambar,149,0,5,5%,190590,SKU-SI-DOSA,890000000005,,,plate,Veg,12 minutes,Available,"dosa,south indian"
+Cold Coffee,Beverages,Cold Drinks,Chilled coffee with milk and ice cream,129,0,5,5%,220299,SKU-BEV-COFFEE,890000000006,Classic,300 ml,glass,Veg,7 minutes,Available,"coffee,cold"

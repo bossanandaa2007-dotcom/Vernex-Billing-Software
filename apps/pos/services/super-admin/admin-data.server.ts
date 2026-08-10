@@ -331,6 +331,23 @@ export async function listBusinessCustomers(businessId: string, search = '') {
   }) as AdminCustomer[];
 }
 
+export async function listBusinessProducts(businessId: string, search = '') {
+  const supabase = await client();
+  let query = supabase
+    .from('Product')
+    .select('id, productId, sellprice, productstock:ProductStock!inner(id,name,cat,stock,price,businessId,variants:ProductVariant(id,name,price,sku,sortOrder))')
+    .eq('productstock.businessId', businessId)
+    .order('productId', { ascending: false })
+    .limit(300);
+  if (search) query = query.ilike('productstock.name', `%${search}%`);
+  const { data, error } = await query;
+  ensure(error, 'Unable to load business products.');
+  return (data ?? []).map((row) => ({
+    ...row,
+    productstock: Array.isArray(row.productstock) ? row.productstock[0] : row.productstock,
+  }));
+}
+
 export async function getBusinessCustomer(businessId: string, customerId: string) {
   const customers = await listBusinessCustomers(businessId);
   const customer = customers.find((item) => item.id === customerId);

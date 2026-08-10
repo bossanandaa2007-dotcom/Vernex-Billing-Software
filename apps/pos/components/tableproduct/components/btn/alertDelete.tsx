@@ -62,7 +62,9 @@ export function DeleteAlertDialog({
   };
 
   return (
-    <AlertDialog open={open}>
+    <AlertDialog open={open} onOpenChange={(nextOpen) => {
+      if (!nextOpen) handleCancel();
+    }}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>

@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetDescription,
   SheetFooter,
@@ -88,7 +87,9 @@ export function SheetRestock({
   };
 
   return (
-    <Sheet open={open}>
+    <Sheet open={open} onOpenChange={(nextOpen) => {
+      if (!nextOpen) handleCancel();
+    }}>
       <SheetContent showCloseButton={false}>
         <SheetHeader>
           <SheetTitle>Restock {product.name}</SheetTitle>
@@ -125,23 +126,21 @@ export function SheetRestock({
           </div>
         </div>
         <SheetFooter>
-          <SheetClose asChild>
-            <Button
-              onClick={handleAdd}
-              type="submit"
-              disabled={loading}
-              className="text-gray-100"
-            >
-              {loading ? (
-                <>
-                  <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
-                  Please wait
-                </>
-              ) : (
-                'Add Stock'
-              )}
-            </Button>
-          </SheetClose>
+          <Button
+            onClick={handleAdd}
+            type="submit"
+            disabled={loading}
+            className="text-gray-100"
+          >
+            {loading ? (
+              <>
+                <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
+                Please wait
+              </>
+            ) : (
+              'Add Stock'
+            )}
+          </Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>
