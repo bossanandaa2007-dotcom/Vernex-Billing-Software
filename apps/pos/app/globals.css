@@ -207,16 +207,3 @@
 .apexcharts-tooltip-series-group {
   @apply !pl-1.5;
 }
-
-/* Scrollable regions that should not show a scrollbar (the sidebar navigation).
-   Scrolling — wheel, touch and keyboard — keeps working; only the bar is hidden. */
-.no-scrollbar {
-  scrollbar-width: none;          /* Firefox */
-  -ms-overflow-style: none;       /* legacy Edge/IE */
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;                  /* Chrome, Safari */
-}

@@ -432,66 +432,6 @@ export async function getSupportTicket(id: string) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Subscription payments
-// A business pays offline and submits the reference; the admin confirms it here,
-// which is what actually activates the licence.
-// ---------------------------------------------------------------------------
-export type SubscriptionPaymentRow = {
-  id: string;
-  businessId: string;
-  businessName: string;
-  plan: string;
-  planName: string;
-  amount: number;
-  currency: string;
-  method: string;
-  reference: string;
-  provider: string;
-  orderId: string | null;
-  paymentId: string | null;
-  failureReason: string;
-  payerName: string;
-  note: string;
-  status: string;
-  reviewNote: string;
-  reviewedAt: string | null;
-  activatedUntil: string | null;
-  submittedByName: string;
-  submittedByEmail: string;
-  createdAt: string;
-};
-
-export async function listSubscriptionPayments({ status = 'ALL', search = '' }: { status?: string; search?: string } = {}) {
-  const supabase = await client();
-  let query = supabase
-    .from('subscription_payments')
-    .select('id, businessId, plan, planName, amount, currency, method, reference, provider, orderId, paymentId, failureReason, payerName, note, status, reviewNote, reviewedAt, activatedUntil, submittedByName, submittedByEmail, createdAt')
-    .order('createdAt', { ascending: false })
-    .limit(300);
-  if (status !== 'ALL') query = query.eq('status', status);
-  if (search) query = query.or(`paymentId.ilike.%${search}%,orderId.ilike.%${search}%,payerName.ilike.%${search}%,submittedByEmail.ilike.%${search}%`);
-  const { data, error } = await query;
-  ensure(error, 'Unable to load subscription payments.');
-  const names = await businessNames([...new Set((data ?? []).map((item) => item.businessId as string))]);
-  return (data ?? []).map((item) => ({
-    ...item,
-    businessName: names.get(item.businessId as string) ?? 'Unknown business',
-  })) as SubscriptionPaymentRow[];
-}
-
-// Failed gateway payments — worth surfacing because they usually mean a
-// customer tried to pay and could not, which is a support issue.
-export async function countFailedPayments() {
-  const supabase = await client();
-  const { count, error } = await supabase
-    .from('subscription_payments')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'FAILED');
-  if (error) return 0;
-  return count ?? 0;
-}
-
 // Count of tickets awaiting an admin reply — used for the nav badge / notifications.
 export async function countUnreadSupport() {
   const supabase = await client();

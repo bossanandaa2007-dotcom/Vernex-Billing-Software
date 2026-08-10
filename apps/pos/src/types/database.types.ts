@@ -24,24 +24,6 @@ export type Database = {
         ownerUserId: string; trialStartedAt: string; trialEndsAt: string | null;
         subscriptionStatus: SubscriptionStatus; planName: string; activatedAt: string | null;
         suspendedAt: string | null; createdAt: string; updatedAt: string;
-        planExpiresAt: string | null; planPeriod: string | null;
-      }>;
-      subscription_payments: Table<{
-        id: string; businessId: string; plan: string; planName: string; amount: number;
-        currency: string; method: string; reference: string; payerName: string; note: string;
-        status: string; reviewNote: string; reviewedAt: string | null;
-        activatedFrom: string | null; activatedUntil: string | null;
-        businessNameSnapshot: string; submittedByStaffId: string | null;
-        submittedByName: string; submittedByEmail: string; createdAt: string; updatedAt: string;
-        provider: string; orderId: string | null; paymentId: string | null; failureReason: string;
-      }, {
-        id?: string; businessId: string; plan: string; planName?: string; amount?: number;
-        currency?: string; method?: string; reference: string; payerName?: string; note?: string;
-        status?: string; reviewNote?: string; reviewedAt?: string | null;
-        activatedFrom?: string | null; activatedUntil?: string | null;
-        businessNameSnapshot?: string; submittedByStaffId?: string | null;
-        submittedByName?: string; submittedByEmail?: string; createdAt?: string; updatedAt?: string;
-        provider?: string; orderId?: string | null; paymentId?: string | null; failureReason?: string;
       }>;
       business_modules: Table<{
         id: string; business_id: string; module_key: string; enabled: boolean;

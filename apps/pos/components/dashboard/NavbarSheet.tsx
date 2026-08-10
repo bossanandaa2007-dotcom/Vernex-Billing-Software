@@ -16,7 +16,7 @@ export function NavbarSheet({ storeName, storeLogo }: { storeName: string; store
     ? NAVBAR_ITEMS.filter(
         (item) =>
           !bottomNavigationPaths.has(item.path) &&
-          (!item.moduleKey || enabledModules.includes(item.moduleKey)) &&
+          enabledModules.includes(item.moduleKey) &&
           (!item.roles || item.roles.includes(role as any))
       )
     : [];
@@ -26,7 +26,7 @@ export function NavbarSheet({ storeName, storeLogo }: { storeName: string; store
       {/* SheetContent component to render the navigation content */}
       <SheetContent side="left" className="flex w-[min(86vw,340px)] flex-col border-vernex-gold/20 bg-vernex-dark p-0">
         {/* Navigation container */}
-        <div className="shrink-0 border-b border-white/10 px-5 py-4">
+        <div className="border-b border-white/10 px-5 py-4">
           <Link href="/home" className="flex items-center gap-3" aria-label={`${storeName} dashboard`}>
             <span className="flex h-12 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-sm">
               <Image
@@ -45,7 +45,7 @@ export function NavbarSheet({ storeName, storeLogo }: { storeName: string; store
             </span>
           </Link>
         </div>
-        <nav className="no-scrollbar grid min-h-0 flex-1 content-start gap-1 overflow-y-auto overscroll-contain p-4 text-sm font-medium">
+        <nav className="grid flex-1 content-start gap-1 overflow-y-auto p-4 text-sm font-medium">
           {/* Link for the top section with an icon */}
           {/* Map through NAVBAR_ITEMS to create navigation links */}
           {items.map((item) => (
@@ -64,10 +64,10 @@ export function NavbarSheet({ storeName, storeLogo }: { storeName: string; store
             </SheetClose>
           ))}
         </nav>
-        <div className="shrink-0 border-t border-white/10 px-4 py-3 text-xs text-slate-400">
+        <div className="border-t border-white/10 p-4 text-xs text-slate-400">
           <p className="font-medium text-white">Business workspace</p>
-          <p className="mt-0.5 truncate">{storeName}</p>
-          <div className="mt-2">
+          <p className="mt-1 truncate">{storeName}</p>
+          <div className="mt-3">
             <LogoutButton />
           </div>
         </div>

@@ -26,7 +26,7 @@ export function userFacingError(value: unknown, fallback = 'Something went wrong
   if (!rawMessage || looksTechnical) return fallback;
 
   if (message.includes('trial') || message.includes('subscription')) {
-    return 'Your plan has ended. Open Subscription to renew and continue using Vernex.';
+    return 'Your trial has expired. Contact Vernex to activate your license.';
   }
   if (message.includes('permission') || message.includes('forbidden') || message.includes('unauthorized')) {
     return 'You do not have permission to perform this action.';

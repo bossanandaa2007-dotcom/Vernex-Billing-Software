@@ -12,17 +12,15 @@ function Navbar({ collapsed = false }: { collapsed?: boolean }) {
 
   const items = role
     ? NAVBAR_ITEMS.filter((item) =>
-        (!item.moduleKey || enabledModules.includes(item.moduleKey)) &&
+        enabledModules.includes(item.moduleKey) &&
         (!item.roles || item.roles.includes(role as any)))
     : [];
 
   return (
     <>
-      {/* min-h-0 lets this shrink below its content height so the list scrolls
-          instead of pushing the workspace footer off the bottom of the screen. */}
-      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div className="flex-1">
         {/* Navigation bar container */}
-        <nav className={cn('grid items-start gap-1 px-3 py-3 text-sm font-medium', !collapsed && 'lg:px-4')}>
+        <nav className={cn('grid items-start gap-1 px-3 py-4 text-sm font-medium', !collapsed && 'lg:px-4')}>
           {/* Map through NAVBAR_ITEMS to create navigation links */}
           {items.map((item) => (
             <Link
