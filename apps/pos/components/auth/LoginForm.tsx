@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getBrowserSupabase } from '@/lib/supabase';
+import { SUPER_ADMIN_ROUTE } from '@/lib/super-admin/session';
 import Image from 'next/image';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Eye, EyeOff, Loader2, LockKeyhole, Mail } from 'lucide-react';
@@ -84,9 +85,14 @@ export function LoginForm() {
       }
       // The server decides the destination by role: /super-admin for the Super
       // Admin, or the right POS page for the signed-in user. A deep link (?next=)
-      // still wins so bounced users return to where they were headed.
+      // still wins so bounced users return to where they were headed, but only
+      // when it is a same-site path in the area this account can open; the Super
+      // Admin has no business, so a POS deep link like /home would fail for them.
+      const destination: string = result?.redirect || '/home';
       const next = new URLSearchParams(window.location.search).get('next');
-      window.location.href = next || result?.redirect || '/home';
+      const isSuperAdminPath = (path: string) => path === SUPER_ADMIN_ROUTE || path.startsWith(`${SUPER_ADMIN_ROUTE}/`);
+      const nextAllowed = !!next && /^\/(?![/\\])/.test(next) && isSuperAdminPath(next) === isSuperAdminPath(destination);
+      window.location.href = nextAllowed ? next : destination;
     } catch {
       setMessage('Unable to sign in. Please check your connection and try again.');
     } finally {
