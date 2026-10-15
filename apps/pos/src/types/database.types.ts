@@ -23,7 +23,21 @@ export type Database = {
         id: string; name: string; country: string; currency: string; taxMode: TaxMode;
         ownerUserId: string; trialStartedAt: string; trialEndsAt: string | null;
         subscriptionStatus: SubscriptionStatus; planName: string; activatedAt: string | null;
-        suspendedAt: string | null; createdAt: string; updatedAt: string;
+        suspendedAt: string | null; planExpiresAt: string | null; planPeriod: string | null;
+        createdAt: string; updatedAt: string;
+      }>;
+      subscription_payments: Table<{
+        id: string; businessId: string; plan: string; planName: string; amount: number;
+        currency: string; method: string; reference: string; payerName: string; note: string;
+        status: string; reviewNote: string; reviewedAt: string | null; activatedFrom: string | null;
+        activatedUntil: string | null; businessNameSnapshot: string; submittedByStaffId: string | null;
+        submittedByName: string; submittedByEmail: string; createdAt: string; updatedAt: string;
+      }, {
+        id?: string; businessId: string; plan: string; planName: string; amount: number;
+        currency?: string; method: string; reference?: string; payerName?: string; note?: string;
+        status?: string; reviewNote?: string; reviewedAt?: string | null; activatedFrom?: string | null;
+        activatedUntil?: string | null; businessNameSnapshot?: string; submittedByStaffId?: string | null;
+        submittedByName?: string; submittedByEmail?: string; createdAt?: string; updatedAt?: string;
       }>;
       business_modules: Table<{
         id: string; business_id: string; module_key: string; enabled: boolean;

@@ -12,7 +12,7 @@ function Navbar({ collapsed = false }: { collapsed?: boolean }) {
 
   const items = role
     ? NAVBAR_ITEMS.filter((item) =>
-        enabledModules.includes(item.moduleKey) &&
+        (!item.moduleKey || enabledModules.includes(item.moduleKey)) &&
         (!item.roles || item.roles.includes(role as any)))
     : [];
 

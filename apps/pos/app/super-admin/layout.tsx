@@ -1,13 +1,19 @@
 import { requireSuperAdmin } from '@/lib/super-admin/auth.server';
-import { listAuditLogs, getTrials } from '@/services/super-admin/admin-data.server';
+import { listAuditLogs, getTrials, countPendingSubscriptionPayments } from '@/services/super-admin/admin-data.server';
 import { AdminShell } from '@/components/super-admin/admin-shell';
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const admin = await requireSuperAdmin();
   let notifications: Array<{ title: string; description: string; href: string; tone: 'warning' | 'info' }> = [];
   try {
-    const [trials, audit] = await Promise.all([getTrials(), listAuditLogs()]);
+    const [trials, audit, pendingPayments] = await Promise.all([getTrials(), listAuditLogs(), countPendingSubscriptionPayments()]);
     notifications = [
+      ...(pendingPayments > 0 ? [{
+        title: 'Payments awaiting approval',
+        description: `${pendingPayments} payment request${pendingPayments === 1 ? '' : 's'} need review.`,
+        href: '/super-admin/payments',
+        tone: 'warning' as const,
+      }] : []),
       ...trials
         .filter((item) => item.subscriptionStatus === 'TRIAL' && item.daysRemaining <= 7)
         .slice(0, 4)

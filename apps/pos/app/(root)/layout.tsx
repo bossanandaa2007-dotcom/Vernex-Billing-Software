@@ -17,6 +17,8 @@ import { NAVBAR_ITEMS } from '@/constant/navbarMenu';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { TrialBanner } from '@/components/subscription/TrialBanner';
+import { RenewalReminder } from '@/components/subscription/RenewalReminder';
+import { SubscriptionGate } from '@/components/subscription/SubscriptionGate';
 import { useBusinessAccess } from '@/hooks/use-business-access';
 import { LogoutButton } from '@/components/auth/LogoutButton';
 import { MobileBottomNav } from '@/components/dashboard/MobileBottomNav';
@@ -185,10 +187,13 @@ const RootLayout = ({ children }: RootLayoutProps) => {
                   <h1 className="text-lg font-semibold">Access denied</h1>
                   <p className="mt-1 text-sm">{routeModule && !enabledModules.includes(routeModule) ? 'This feature is not enabled for your business.' : 'Your current role does not have permission to open this page.'}</p>
                 </div>
-              ) : children}
+              ) : (
+                <SubscriptionGate>{children}</SubscriptionGate>
+              )}
             </div>
           </main>
           <MobileBottomNav />
+          <RenewalReminder />
         </div>
       </div>
     </div>

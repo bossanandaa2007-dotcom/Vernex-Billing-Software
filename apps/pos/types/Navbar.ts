@@ -3,5 +3,5 @@ export type NavItem = {
   path: string;
   icon?: JSX.Element;
   roles?: Array<'OWNER' | 'MANAGER' | 'CASHIER' | 'WORKER' | 'UNKNOW'>;
-  moduleKey: import('@/lib/modules').ModuleKey;
+  moduleKey?: import('@/lib/modules').ModuleKey;
 };

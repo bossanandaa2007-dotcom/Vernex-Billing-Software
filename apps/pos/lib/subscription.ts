@@ -6,13 +6,19 @@ export type BusinessSubscriptionStatus = {
   businessId: string;
   status: SubscriptionStatus;
   planName: string;
+  planPeriod: string | null;
   trialStartedAt: Date | null;
   trialEndsAt: Date | null;
+  planExpiresAt: Date | null;
   activatedAt: Date | null;
   suspendedAt: Date | null;
   daysRemaining: number;
+  accessEndsAt: Date | null;
   isTrialActive: boolean;
   isTrialExpired: boolean;
+  isPlanExpired: boolean;
+  needsRenewalSoon: boolean;
+  renewalReminderDays: number;
   canUsePaidFeatures: boolean;
 };
 
@@ -22,6 +28,7 @@ const daysBetween = (from: Date, to: Date) => Math.max(0, Math.ceil((to.getTime(
 // on every guarded request (matches the 30s dashboard cache pattern).
 const subscriptionCache = new Map<string, { data: BusinessSubscriptionStatus; expires: number }>();
 const SUBSCRIPTION_CACHE_MS = 30_000;
+const RENEWAL_REMINDER_DAYS = 5;
 
 export async function getBusinessSubscriptionStatus(businessId: string): Promise<BusinessSubscriptionStatus> {
   const cached = subscriptionCache.get(businessId);
@@ -31,21 +38,32 @@ export async function getBusinessSubscriptionStatus(businessId: string): Promise
   if (!business) throw new AuthError('Business account not found.', 403);
   const now = new Date();
   const trialEndsAt = business.trialEndsAt ? new Date(business.trialEndsAt) : null;
+  const planExpiresAt = business.planExpiresAt ? new Date(business.planExpiresAt) : null;
   const trialStillInWindow = !!trialEndsAt && trialEndsAt >= now;
+  const paidStillInWindow = business.subscriptionStatus === 'ACTIVE' && (!planExpiresAt || planExpiresAt >= now);
   const isTrialActive = business.subscriptionStatus === 'TRIAL' && trialStillInWindow;
   const isTrialExpired = business.subscriptionStatus === 'EXPIRED' || (business.subscriptionStatus === 'TRIAL' && !!trialEndsAt && trialEndsAt < now);
-  const canUsePaidFeatures = business.subscriptionStatus === 'ACTIVE' || isTrialActive;
+  const isPlanExpired = business.subscriptionStatus === 'ACTIVE' && !!planExpiresAt && planExpiresAt < now;
+  const canUsePaidFeatures = paidStillInWindow || isTrialActive;
+  const accessEndsAt = isTrialActive ? trialEndsAt : business.subscriptionStatus === 'ACTIVE' ? planExpiresAt : null;
+  const daysRemaining = accessEndsAt ? daysBetween(now, accessEndsAt) : canUsePaidFeatures ? 9999 : 0;
   const status: BusinessSubscriptionStatus = {
     businessId,
-    status: isTrialExpired && business.subscriptionStatus === 'TRIAL' ? 'EXPIRED' : business.subscriptionStatus,
+    status: (isTrialExpired || isPlanExpired) ? 'EXPIRED' : business.subscriptionStatus,
     planName: business.planName,
+    planPeriod: business.planPeriod ?? null,
     trialStartedAt: business.trialStartedAt ? new Date(business.trialStartedAt) : null,
     trialEndsAt,
+    planExpiresAt,
     activatedAt: business.activatedAt ? new Date(business.activatedAt) : null,
     suspendedAt: business.suspendedAt ? new Date(business.suspendedAt) : null,
-    daysRemaining: trialEndsAt ? daysBetween(now, trialEndsAt) : 0,
+    daysRemaining,
+    accessEndsAt,
     isTrialActive,
     isTrialExpired,
+    isPlanExpired,
+    needsRenewalSoon: canUsePaidFeatures && daysRemaining <= RENEWAL_REMINDER_DAYS,
+    renewalReminderDays: RENEWAL_REMINDER_DAYS,
     canUsePaidFeatures,
   };
   subscriptionCache.set(businessId, { data: status, expires: Date.now() + SUBSCRIPTION_CACHE_MS });
@@ -67,7 +85,7 @@ export async function canUsePaidFeatures(businessId: string) {
 export async function requireActiveSubscription(ctx: CurrentUserContext) {
   const subscription = await getBusinessSubscriptionStatus(ctx.businessId);
   if (!subscription.canUsePaidFeatures) {
-    throw new AuthError('Your trial has expired. Contact Vernex to activate your license.', 402);
+    throw new AuthError('Your access has expired. Choose a plan and submit payment details to continue.', 402);
   }
   return subscription;
 }

@@ -16,7 +16,7 @@ export function NavbarSheet({ storeName, storeLogo }: { storeName: string; store
     ? NAVBAR_ITEMS.filter(
         (item) =>
           !bottomNavigationPaths.has(item.path) &&
-          enabledModules.includes(item.moduleKey) &&
+          (!item.moduleKey || enabledModules.includes(item.moduleKey)) &&
           (!item.roles || item.roles.includes(role as any))
       )
     : [];
